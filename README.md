@@ -73,7 +73,6 @@ flowchart TD
     INT --> CPU
 ```
 
-*This is an initial design and will be refined in later weeks as instruction execution and scheduling details are implemented.*
 
 ## Initial Development Plan
 
@@ -88,7 +87,6 @@ flowchart TD
 | 7 | Performance metrics (waiting/turnaround/response time, CPU utilization) |
 | 8 | Testing, documentation, final polish |
 
-*(Adjust week numbers to match the actual course calendar.)*
 
 ## Git Workflow
 
