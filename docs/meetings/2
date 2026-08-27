@@ -1,0 +1,28 @@
+# Meeting Minutes
+
+**Date:** 27 August 2026
+**Meeting Number:** 2
+**Time:** 4:20 PM
+**Participants:** Cyrus Shobith Pinto (25190111), Arnold Noah (25190106), Shashidhara (25190148), Chrisel Lobo (25190110)
+
+## Agenda
+1. As a group, go through the proposed build approach (source code → understand → Java UI).
+2. Make sure everyone is clear on the plan before it is finalized.
+3. Go over the tools being used for planning and communication.
+
+## Discussion
+- The team leader guided the group through the concept of beginning with real STC89C52 source code instead of relying only on the datasheet.
+- The team talked about passing that source code through a compiler so register/peripheral behavior could be observed directly, before recreating the same behavior in Java.
+- The discussion also covered linking the Java simulation logic to a UI so the behavior can be visualized, rather than being run only on hardware.
+- The tools currently being used for the project were reviewed:
+  - **Miro** — shared board for planning and task breakdown (used in Meeting 1).
+  - **Google Chat** — day-to-day coordination among members.
+  - **Google Meet with transcription** — used to record and transcribe meetings for documentation.
+- Some earlier communication friction was mentioned (a member was hard to reach around Meeting 1); this was addressed by moving primary coordination to Google Chat going forward.
+
+## Decisions
+1. The build approach was finalized: compile and run reference source code to understand real behavior, then implement equivalent behavior in Java with a connected UI. (See `docs/decisions/decision-log.md`, Decision 004.)
+2. Miro will continue to be used for planning, Google Chat for day-to-day coordination, and Google Meet (with transcription) for meetings — all official decisions still get written up in `docs/` per project rules, not left only in chat/meeting transcripts.
+
+## Conclusion
+1. We understood the plan and recorded it in files, which we now upload accordingly to github.
