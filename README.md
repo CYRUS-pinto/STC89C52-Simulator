@@ -39,7 +39,6 @@ Design and implement a software based simulator for the assigned 8-bit microcont
 | Shashidhara | Data Structures & Process Management — **Memory organization, Program Counter** | Testing |
 | Chrisel Lobo | OS Scheduling & Context Switching — **Timer, Stack mechanism / Stack pointer** | UI & Integration |
 
-> Note: Topic allocation above reflects the 22 Aug 2026 team meeting. Arnold was not present and his items must be confirmed with him directly — see `docs/decisions/decision-log.md`.
 
 ## Selected Programming Language
 **Java**
