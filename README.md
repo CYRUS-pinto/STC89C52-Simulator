@@ -28,7 +28,7 @@ Design and implement a software based simulator for the assigned 8-bit microcont
 | Team Leader | Cyrus Shobith Pinto | 25190111 | — |
 | Member | Arnold Noah | 25190106 | 8951619591 |
 | Member | Shashidhara | 25190148 | 7411004525 |
-| Member | Chrisel Lobo | 25190110 | — |
+| Member | Chrisel Lobo | 25190110 | 9591716088 |
 
 ## Team Responsibilities
 
