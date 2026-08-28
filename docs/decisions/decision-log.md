@@ -1,8 +1,8 @@
 # Decision Log
 
 ## Decision 000 - Team Formation
-**Date:**Prior to 22 August 2026
-**Status:**Closed
+Date: Prior to 22 August 2026
+Status: Closed
 
 **Context:** While forming the team, some students available were strong coders. 
 The team leader (Cyrus) deliberately did not select them, on the assessment that mixing strong and less-experienced coders on one team risked ego conflicts that could hurt team cohesion. The current team (Cyrus, Arnold, Shashidhara, Chrisel) was formed instead, with the expectation that responsibilities would need to be actively guided rather than assumed.
