@@ -109,7 +109,7 @@ flowchart LR
     merge --> main
 ```
 
-## Communication Rules
+## Communication
 - **GitHub Issues** — technical questions, bugs, design concerns, tasks, decisions requiring discussion.
 - **Google Classroom / shared Google Docs (college email only)** — meeting minutes, weekly status reports, formal documentation.
 - **Miro** — shared board for planning and task breakdown.
