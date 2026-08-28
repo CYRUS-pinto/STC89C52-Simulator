@@ -118,7 +118,7 @@ flowchart LR
 
 ## Repository Structure
 ```
-project-root/
+STC89C52-Simulator/
 ├── README.md
 ├── .gitignore
 ├── docs/
