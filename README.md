@@ -46,7 +46,7 @@ Design and implement a software based simulator for the assigned 8-bit microcont
 - **Reason for selection:** Assigned as the preferred language for this project; strong OOP support suits modeling CPU/registers/memory/processes as classes; team has prior Java familiarity from coursework.
 - **Advantages for this project:** Clear class-based modeling of PCB, registers, and memory; built-in collections (`Queue`, `Deque`, `PriorityQueue`) map directly onto FCFS/Round Robin/Priority scheduling; strong tooling for a Swing/JavaFX or web-based (Spring) visualization layer.
 - **Limitations:** More verbose than scripting languages for quick prototyping; no low-level bit/memory-mapped register access as direct as C, so register/flag simulation is done via wrapper classes instead of raw memory.
-- **Alternative languages considered:** None finalized — Java is being used as assigned and also C.
+- **Alternative languages considered:** None finalized — Java is being used as assigned and also add more tools in the future.
 
 ## Initial System Architecture
 
