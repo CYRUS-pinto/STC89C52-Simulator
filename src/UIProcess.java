@@ -41,6 +41,7 @@ public class UIProcess {
         System.out.println("[JAVA WEB SERVER] Running at: http://localhost:" + WEB_PORT);
         System.out.println("Open http://localhost:" + WEB_PORT + " in Chrome/Edge for the 6-panel dashboard.\n");
 
+        lastState = sendCommandToCore("STATE");
         printConsoleDashboard(lastState);
 
         Scanner scanner = new Scanner(System.in);
@@ -134,8 +135,8 @@ public class UIProcess {
                 while ((resp = fromCore.readLine()) != null) {
                     sb.append(resp).append("\n");
                     if (resp.startsWith("STATE|")) lastState = resp;
-                    if (resp.equals("HALTED")) break;
-                    if (cmd.equals("STEP") || cmd.equals("RESET")) break; // single-reply commands
+                    if (resp.equals("HALTED") || resp.equals("RESET_DONE")) break;
+                    if (cmd.equals("STEP") || cmd.equals("RESET") || cmd.startsWith("LOAD")) break; // single-reply commands
                 }
             } catch (SocketTimeoutException timeout) {
                 // Core did not send more; return whatever we already got
@@ -261,7 +262,7 @@ public class UIProcess {
       <!-- 1. Assembly / Opcode Editor -->
       <div class='bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2'>
         <h2 class='font-bold text-sky-400 border-b border-slate-800 pb-2 uppercase tracking-wide'>1. Assembly / Opcode Editor</h2>
-        <textarea id='code' placeholder='Paste hex bytes here, e.g. 74 FE 24 03 ...' class='w-full bg-slate-950 p-3 rounded-lg border border-slate-800/80 text-slate-300 min-h-[190px] outline-none'></textarea>
+        <textarea id='code' placeholder='Paste hex bytes here, e.g. 74 FE 24 03 ...' class='w-full bg-slate-950 p-3 rounded-lg border border-slate-800/80 text-slate-300 min-h-[190px] outline-none'>74 FE 24 03 04 54 0F E0 74 09 E0 D0 FF</textarea>
       </div>
 
       <!-- 2. Execution Trace -->
