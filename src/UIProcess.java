@@ -25,7 +25,7 @@ public class UIProcess {
     private static final int CORE_PORT = 5000;
     private static final int WEB_PORT = 8080;
     private static final String OFFLINE = "ERROR|CORE_OFFLINE";
-    private static final Set<String> WEB_COMMANDS = Set.of("STEP", "RUN", "STOP", "RESET", "LOAD");
+    private static final Set<String> WEB_COMMANDS = Set.of("STEP", "RUN", "STOP", "RESET", "LOAD", "STATE");
 
     // Last real STATE line received from Core (null until the first one arrives)
     private static volatile String lastState = null;
@@ -242,47 +242,87 @@ public class UIProcess {
 <html lang='en'>
 <head>
   <meta charset='UTF-8'>
-  <title>STC89C52 Microcontroller Simulator - 6 Panel Web UI</title>
-  <script src='https://cdn.tailwindcss.com'></script>
-  <style>@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&display=swap'); body { font-family: 'Fira Code', monospace; }</style>
+  <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+  <title>STC89C52 Microcontroller Simulator - 6 Panel Dashboard</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', 'Courier New', monospace; background: #0f172a; color: #f1f5f9; padding: 16px; font-size: 13px; line-height: 1.5; }
+    .container { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+    .header-bar { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 14px 18px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
+    .title { font-size: 16px; font-weight: 700; color: #38bdf8; display: flex; align-items: center; gap: 8px; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; background: #64748b; display: inline-block; }
+    .dot-green { background: #10b981; }
+    .dot-red { background: #ef4444; }
+    .subtext { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+    .btn-group { display: flex; flex-wrap: wrap; gap: 8px; }
+    button { background: #334155; color: #fff; border: 1px solid #475569; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+    button:hover { background: #475569; }
+    button.btn-step { background: #059669; border-color: #10b981; }
+    button.btn-step:hover { background: #10b981; }
+    button.btn-run { background: #0284c7; border-color: #38bdf8; }
+    button.btn-run:hover { background: #0369a1; }
+    button.btn-stop { background: #dc2626; border-color: #ef4444; }
+    button.btn-stop:hover { background: #b91c1c; }
+    button.btn-reset { background: #d97706; border-color: #f59e0b; }
+    button.btn-reset:hover { background: #b45309; }
+    button.btn-refresh { background: #4f46e5; border-color: #6366f1; }
+    button.btn-refresh:hover { background: #4338ca; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 14px; }
+    .card { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+    .card-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #334155; padding-bottom: 6px; }
+    .title-blue { color: #38bdf8; }
+    .title-green { color: #34d399; }
+    .title-amber { color: #fbbf24; }
+    .inner-box { background: #0b1120; border: 1px solid #1e293b; border-radius: 6px; padding: 12px; min-height: 160px; font-family: 'Courier New', monospace; font-size: 12px; color: #cbd5e1; }
+    textarea.inner-box { width: 100%; resize: vertical; outline: none; border-color: #334155; color: #f1f5f9; }
+    .trace-phase { color: #34d399; margin: 4px 0; font-weight: 600; }
+    .val-highlight { font-weight: 700; color: #38bdf8; }
+    .reg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; }
+    .flag-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .chip { padding: 2px 8px; border-radius: 4px; font-size: 11px; background: #0f172a; border: 1px solid #334155; color: #94a3b8; }
+    .chip-on { background: #064e3b; border-color: #10b981; color: #34d399; font-weight: 700; }
+    .status-bar { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 10px 16px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; font-size: 11px; color: #94a3b8; }
+    .status-text { font-weight: 700; color: #34d399; }
+    pre { white-space: pre; overflow-x: auto; }
+  </style>
 </head>
-<body class='bg-slate-950 text-slate-100 p-4 md:p-6 min-h-screen text-xs'>
-  <div class='max-w-7xl mx-auto space-y-4'>
-    <div class='bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-wrap justify-between items-center gap-4 shadow-xl'>
+<body>
+  <div class='container'>
+    <div class='header-bar'>
       <div>
-        <h1 class='text-lg font-bold text-emerald-400 flex items-center gap-2'>
-          <span id='dot' class='w-3 h-3 rounded-full bg-slate-500'></span>
+        <div class='title'>
+          <span id='dot' class='dot'></span>
           STC89C52 MICROCONTROLLER SIMULATOR (6-PANEL DASHBOARD)
-        </h1>
-        <p class='text-[11px] text-slate-400'>Owner: Bondas (UI Module) | Core Socket: localhost:5000 | Web HTTP: localhost:8080</p>
+        </div>
+        <div class='subtext'>System Architecture: Multi-Process POSIX IPC | Core Port: 5000 | Web: 8080</div>
       </div>
-      <div class='flex flex-wrap items-center gap-2'>
-        <button onclick='loadCode()' class='px-3 py-1.5 bg-slate-800 hover:bg-slate-700 font-bold rounded text-slate-200 border border-slate-700'>[ Load Hex / Code ]</button>
-        <button onclick='send("STEP")' class='px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 font-bold rounded text-white'>[ Step (F->D->E) ]</button>
-        <button onclick='send("RUN")' class='px-3.5 py-1.5 bg-sky-600 hover:bg-sky-500 font-bold rounded text-white'>[ Run Continuous ]</button>
-        <button onclick='send("STOP")' class='px-3.5 py-1.5 bg-rose-600 hover:bg-rose-500 font-bold rounded text-white'>[ Stop / Halt ]</button>
-        <button onclick='send("RESET")' class='px-3.5 py-1.5 bg-amber-600 hover:bg-amber-500 font-bold rounded text-white'>[ Reset ]</button>
+      <div class='btn-group'>
+        <button onclick='loadCode()'>[ Load Hex ]</button>
+        <button class='btn-step' onclick='send("STEP")'>[ Step (F-D-E) ]</button>
+        <button class='btn-run' onclick='send("RUN")'>[ Run Continuous ]</button>
+        <button class='btn-stop' onclick='send("STOP")'>[ Stop / Halt ]</button>
+        <button class='btn-reset' onclick='send("RESET")'>[ Reset ]</button>
+        <button class='btn-refresh' onclick='send("STATE")'>[ Refresh ]</button>
       </div>
     </div>
 
-    <div class='grid grid-cols-1 md:grid-cols-3 gap-4'>
-
+    <div class='grid'>
       <!-- 1. Assembly / Opcode Editor -->
-      <div class='bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2'>
-        <h2 class='font-bold text-sky-400 border-b border-slate-800 pb-2 uppercase tracking-wide'>1. Assembly / Opcode Editor</h2>
-        <textarea id='code' placeholder='Paste hex bytes here, e.g. 74 FE 24 03 ...' class='w-full bg-slate-950 p-3 rounded-lg border border-slate-800/80 text-slate-300 min-h-[190px] outline-none'>74 FE 24 03 04 54 0F E0 74 09 E0 D0 FF</textarea>
+      <div class='card'>
+        <div class='card-title title-blue'>1. Assembly / Hex Opcode Editor</div>
+        <textarea id='code' placeholder='Enter hex bytes, e.g.: 74 FE 24 03 04 54 0F E0 74 09 E0 D0 FF' class='inner-box'>74 FE 24 03 04 54 0F E0 74 09 E0 D0 FF</textarea>
       </div>
 
       <!-- 2. Execution Trace -->
-      <div class='bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2'>
-        <h2 class='font-bold text-emerald-400 border-b border-slate-800 pb-2 uppercase tracking-wide'>2. Execution Trace (Week 2)</h2>
-        <div class='bg-slate-950 p-3 rounded-lg border border-slate-800/80 space-y-1.5 min-h-[190px]'>
-          <div class='text-slate-400'>Current PC: <span class='text-sky-300 font-bold' id='trace-pc'>--</span></div>
-          <div class='text-slate-400'>Instruction: <span class='text-emerald-300 font-bold' id='trace-instr'>--</span></div>
-          <div class='text-emerald-400' id='trace-fetch'></div>
-          <div class='text-emerald-400' id='trace-decode'></div>
-          <div class='text-emerald-400' id='trace-exec'></div>
-          <div class='border-t border-slate-800 pt-1 text-slate-400'>
+      <div class='card'>
+        <div class='card-title title-green'>2. Execution Trace (Fetch - Decode - Execute)</div>
+        <div class='inner-box'>
+          <div>Current PC: <span class='val-highlight' id='trace-pc'>--</span></div>
+          <div>Instruction: <span class='val-highlight' id='trace-instr'>--</span></div>
+          <div class='trace-phase' id='trace-fetch'></div>
+          <div class='trace-phase' id='trace-decode'></div>
+          <div class='trace-phase' id='trace-exec'></div>
+          <div style='margin-top: 6px; border-top: 1px solid #1e293b; padding-top: 4px; color: #94a3b8;'>
             State Transition:<br>
             &nbsp;&nbsp;ACC: <span id='trace-acc'>--</span><br>
             &nbsp;&nbsp;CY : <span id='trace-cy'>--</span>
@@ -291,57 +331,60 @@ public class UIProcess {
       </div>
 
       <!-- 3. Registers & PSW -->
-      <div class='bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2'>
-        <h2 class='font-bold text-amber-400 border-b border-slate-800 pb-2 uppercase tracking-wide'>3. Registers &amp; PSW (Weeks 1 &amp; 2)</h2>
-        <div class='bg-slate-950 p-3 rounded-lg border border-slate-800/80 space-y-1.5 min-h-[190px]'>
-          <div class='grid grid-cols-2 gap-2 text-slate-300'>
-            <div>PC : <span class='text-sky-300 font-bold' id='reg-pc'>--</span></div>
-            <div>SP : <span class='text-sky-300 font-bold' id='reg-sp'>--</span></div>
-            <div>ACC: <span class='text-emerald-400 font-bold' id='reg-acc'>--</span></div>
-            <div>B  : <span class='text-emerald-400 font-bold' id='reg-b'>--</span></div>
+      <div class='card'>
+        <div class='card-title title-amber'>3. Registers &amp; PSW Flags</div>
+        <div class='inner-box'>
+          <div class='reg-grid'>
+            <div>PC : <span class='val-highlight' id='reg-pc'>--</span></div>
+            <div>SP : <span class='val-highlight' id='reg-sp'>--</span></div>
+            <div>ACC: <span class='val-highlight' id='reg-acc'>--</span></div>
+            <div>B  : <span class='val-highlight' id='reg-b'>--</span></div>
             <div>R0 : <span id='reg-r0'>--</span></div><div>R1 : <span id='reg-r1'>--</span></div>
             <div>R2 : <span id='reg-r2'>--</span></div><div>R3 : <span id='reg-r3'>--</span></div>
             <div>R4 : <span id='reg-r4'>--</span></div><div>R5 : <span id='reg-r5'>--</span></div>
             <div>R6 : <span id='reg-r6'>--</span></div><div>R7 : <span id='reg-r7'>--</span></div>
           </div>
-          <div class='border-t border-slate-800 pt-2 space-y-1'>
-            <div class='text-slate-400'>FLAGS (PSW):</div>
-            <div class='flex gap-2' id='psw-flags'></div>
+          <div style='margin-top: 8px; border-top: 1px solid #1e293b; padding-top: 6px;'>
+            <div style='color: #94a3b8;'>PSW Flags:</div>
+            <div class='flag-chips' id='psw-flags'></div>
           </div>
         </div>
       </div>
 
       <!-- 4. Hardware Stack -->
-      <div class='bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2'>
-        <h2 class='font-bold text-sky-400 border-b border-slate-800 pb-2 uppercase tracking-wide'>4. Hardware Stack (SP: <span id='stack-sp'>--</span>)</h2>
-        <div class='bg-slate-950 p-3 rounded-lg border border-slate-800/80 space-y-1.5 min-h-[160px] text-slate-300'>
-          <div>Top of Stack: <span class='text-emerald-400 font-bold' id='stack-top'>--</span></div>
-          <div>Stack Depth : <span id='stack-depth'>--</span></div>
+      <div class='card'>
+        <div class='card-title title-blue'>4. Hardware Stack (SP: <span id='stack-sp'>--</span>)</div>
+        <div class='inner-box'>
+          <div>Top of Stack: <span class='val-highlight' id='stack-top'>--</span></div>
+          <div style='margin-top: 6px;'>Stack Depth : <span id='stack-depth'>--</span></div>
+          <div style='margin-top: 6px; color: #94a3b8; font-size: 11px;'>8051 Hardware Stack resets to SP=0x07 (pre-increment ++SP to 0x08 on PUSH).</div>
         </div>
       </div>
 
       <!-- 5. Circular FIFO Queue -->
-      <div class='bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2'>
-        <h2 class='font-bold text-emerald-400 border-b border-slate-800 pb-2 uppercase tracking-wide'>5. Circular FIFO Queue (Week 3)</h2>
-        <div class='bg-slate-950 p-3 rounded-lg border border-slate-800/80 space-y-1.5 min-h-[160px] text-slate-300'>
-          <div>Size: <span class='text-emerald-400 font-bold' id='q-size'>--</span></div>
+      <div class='card'>
+        <div class='card-title title-green'>5. Circular FIFO Queue (Buffer)</div>
+        <div class='inner-box'>
+          <div>Size    : <span class='val-highlight' id='q-size'>--</span></div>
           <div>Capacity: <span id='q-cap'>--</span></div>
-          <div>Front: <span id='q-front'>--</span></div>
-          <div>Rear : <span id='q-rear'>--</span></div>
-          <div>Elements: <span class='text-emerald-300 font-bold' id='q-elems'>--</span></div>
+          <div>Front   : <span id='q-front'>--</span></div>
+          <div>Rear    : <span id='q-rear'>--</span></div>
+          <div style='margin-top: 6px;'>Elements: <span class='val-highlight' id='q-elems'>--</span></div>
         </div>
       </div>
 
       <!-- 6. Memory RAM Inspector -->
-      <div class='bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2'>
-        <h2 class='font-bold text-amber-400 border-b border-slate-800 pb-2 uppercase tracking-wide'>6. Memory RAM Inspector (256 Bytes)</h2>
-        <pre id='ram' class='bg-slate-950 p-3 rounded-lg border border-slate-800/80 min-h-[160px] text-[11px] text-slate-400 overflow-x-auto'>--</pre>
+      <div class='card'>
+        <div class='card-title title-amber'>6. Memory RAM Inspector (256 Bytes)</div>
+        <div class='inner-box' style='overflow-x: auto;'>
+          <pre id='ram' style='font-size: 11px; color: #94a3b8;'>--</pre>
+        </div>
       </div>
     </div>
 
-    <div class='bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-wrap justify-between items-center text-slate-400 text-[11px]'>
-      <div>STATUS BAR: <span id='status' class='font-bold text-slate-400'>Waiting for first command</span></div>
-      <div id='status-last-event'>Last Event: --</div>
+    <div class='status-bar'>
+      <div>STATUS: <span id='status' class='status-text'>Connecting...</span></div>
+      <div id='status-last-event'>Last Event: None</div>
     </div>
   </div>
 
@@ -366,10 +409,8 @@ public class UIProcess {
 
     function flagChip(name, v) {
       const on = isOn(v);
-      const cls = v === undefined ? 'bg-slate-800 text-slate-600'
-                : on ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 font-bold'
-                     : 'bg-slate-800 text-slate-500';
-      return "<span class='px-1.5 py-0.5 rounded " + cls + "'>[" + name + ": " + (v === undefined ? '-' : (on ? 1 : 0)) + "]</span>";
+      const cls = on ? 'chip chip-on' : 'chip';
+      return "<span class='" + cls + "'>[" + name + ": " + (v === undefined ? '-' : (on ? 1 : 0)) + "]</span>";
     }
 
     function render(s) {
@@ -379,19 +420,18 @@ public class UIProcess {
       set('reg-acc', accTxt); set('reg-b', hex(s.B));
       for (let i = 0; i < 8; i++) set('reg-r' + i, hex(s['R' + i]));
       set('trace-instr', s.INSTR);
-      $('trace-fetch').innerText  = s.FETCH   ? 'Phase 1: FETCH   [ ' + s.FETCH + ' ]'   : '';
-      $('trace-decode').innerText = s.DECODE  ? 'Phase 2: DECODE  [ ' + s.DECODE + ' ]'  : '';
-      $('trace-exec').innerText   = s.EXECUTE ? 'Phase 3: EXECUTE [ ' + s.EXECUTE + ' ]' : '';
+      $('trace-fetch').innerText  = s.FETCH   ? 'Fetch  : ' + s.FETCH   : '';
+      $('trace-decode').innerText = s.DECODE  ? 'Decode : ' + s.DECODE  : '';
+      $('trace-exec').innerText   = s.EXECUTE ? 'Execute: ' + s.EXECUTE : '';
 
-      // state transition = previous real state -> current real state
       set('trace-acc', s.A === undefined ? undefined : (prev && prev.A !== undefined ? '0x' + prev.A + ' -> ' : '') + '0x' + s.A);
       set('trace-cy',  s.CY === undefined ? undefined : (prev && prev.CY !== undefined ? prev.CY + ' -> ' : '') + s.CY);
 
       $('psw-flags').innerHTML = flagChip('CY', s.CY) + flagChip('AC', s.AC) + flagChip('OV', s.OV) + flagChip('P', s.P);
 
-      // stack depth is derived from SP (8051 reset value is 0x07)
-      if (s.SP !== undefined) set('stack-depth', Math.max(0, parseInt(s.SP, 16) - 7) + ' items pushed');
+      if (s.SP !== undefined) set('stack-depth', Math.max(0, parseInt(s.SP, 16) - 7) + ' items');
       else set('stack-depth', undefined);
+
       if (s.RAM && s.SP !== undefined) {
         const sp = parseInt(s.SP, 16);
         set('stack-top', 'RAM[0x' + s.SP + '] = 0x' + s.RAM.substr(sp * 2, 2));
@@ -416,14 +456,14 @@ public class UIProcess {
         const res = await fetch('/api/cmd?cmd=' + encodeURIComponent(cmd));
         const text = await res.text();
         if (text.includes('ERROR|CORE_OFFLINE')) {
-          $('dot').className = 'w-3 h-3 rounded-full bg-rose-500';
-          $('status').className = 'font-bold text-rose-400';
+          $('dot').className = 'dot dot-red';
+          $('status').style.color = '#ef4444';
           $('status').innerText = 'Core offline - start CoreProcess on port 5000';
           return;
         }
-        $('dot').className = 'w-3 h-3 rounded-full bg-emerald-500 animate-pulse';
-        $('status').className = 'font-bold text-emerald-400';
-        $('status').innerText = text.includes('HALTED') ? 'Halted' : 'Connected (port 5000)';
+        $('dot').className = 'dot dot-green';
+        $('status').style.color = '#34d399';
+        $('status').innerText = text.includes('HALTED') ? 'Halted' : 'Connected to Core (port 5000)';
 
         const log = text.split('\\n').filter(l => l.startsWith('LOG|')).pop();
         if (log) set('status-last-event', 'Last Event: ' + log);
@@ -432,7 +472,7 @@ public class UIProcess {
         if (s) { render(s); prev = s; }
         if (cmd === 'RESET') prev = null;
       } catch (e) {
-        $('status').className = 'font-bold text-rose-400';
+        $('status').style.color = '#ef4444';
         $('status').innerText = 'UI server unreachable';
       }
     }
@@ -441,6 +481,10 @@ public class UIProcess {
       const code = $('code').value.trim();
       if (code) send('LOAD ' + code);
     }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      send('STATE');
+    });
   </script>
 </body>
 </html>
