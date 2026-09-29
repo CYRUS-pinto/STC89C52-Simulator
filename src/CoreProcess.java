@@ -281,7 +281,15 @@ public class CoreProcess {
     }
 
     private static byte[] parseHex(String hexInput) {
-        String clean = hexInput.replaceAll("[^0-9A-Fa-f]", "");
+        StringBuilder sb = new StringBuilder();
+        for (String line : hexInput.split("\\r?\\n")) {
+            int idx = line.indexOf(';');
+            if (idx != -1) line = line.substring(0, idx);
+            idx = line.indexOf("//");
+            if (idx != -1) line = line.substring(0, idx);
+            sb.append(line).append(" ");
+        }
+        String clean = sb.toString().replaceAll("[^0-9A-Fa-f]", "");
         if (clean.length() % 2 != 0) {
             clean = clean.substring(0, clean.length() - 1);
         }

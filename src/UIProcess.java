@@ -310,7 +310,16 @@ public class UIProcess {
       <!-- 1. Assembly / Opcode Editor -->
       <div class='card'>
         <div class='card-title title-blue'>1. Assembly / Hex Opcode Editor</div>
+        <div style='display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px;'>
+          <button style='font-size: 10.5px; padding: 4px 8px; background: #1e3a8a; border-color: #3b82f6;' onclick='setPreset(1)'>[ Preset 1: Math &amp; Flags ]</button>
+          <button style='font-size: 10.5px; padding: 4px 8px; background: #065f46; border-color: #10b981;' onclick='setPreset(2)'>[ Preset 2: FIFO Queue ]</button>
+          <button style='font-size: 10.5px; padding: 4px 8px; background: #78350f; border-color: #f59e0b;' onclick='setPreset(3)'>[ Preset 3: Logic (ANL) ]</button>
+          <button style='font-size: 10.5px; padding: 4px 8px; background: #4c1d95; border-color: #8b5cf6;' onclick='setPreset(4)'>[ Preset 4: Jump (SJMP) ]</button>
+        </div>
         <textarea id='code' placeholder='Enter hex bytes, e.g.: 74 FE 24 03 04 54 0F E0 74 09 E0 D0 FF' class='inner-box'>74 FE 24 03 04 54 0F E0 74 09 E0 D0 FF</textarea>
+        <div style='font-size: 10.5px; color: #94a3b8; line-height: 1.4; border-top: 1px solid #334155; padding-top: 6px;'>
+          <b>Opcode Reference:</b> <code>74 d</code>: MOV A,#data | <code>24 d</code>: ADD A,#data | <code>04</code>: INC A | <code>54 d</code>: ANL A,#data | <code>80 r</code>: SJMP | <code>E0</code>: ENQUEUE | <code>D0</code>: DEQUEUE | <code>FF</code>: HALT
+        </div>
       </div>
 
       <!-- 2. Execution Trace -->
@@ -474,6 +483,20 @@ public class UIProcess {
       } catch (e) {
         $('status').style.color = '#ef4444';
         $('status').innerText = 'UI server unreachable';
+      }
+    }
+
+    const PRESETS = {
+      1: "74 FE ; MOV A, #254\\n24 03 ; ADD A, #3 (CY=1, AC=1)\\n04    ; INC A\\n54 0F ; ANL A, #0x0F\\nE0    ; ENQUEUE A\\n74 09 ; MOV A, #9\\nE0    ; ENQUEUE A\\nD0    ; DEQUEUE into A\\nFF    ; HALT",
+      2: "74 0A ; MOV A, #10\\nE0    ; ENQUEUE A (item 1)\\n74 1E ; MOV A, #30\\nE0    ; ENQUEUE A (item 2)\\n74 05 ; MOV A, #5\\nE0    ; ENQUEUE A (item 3)\\nD0    ; DEQUEUE -> A=10\\nD0    ; DEQUEUE -> A=30\\nD0    ; DEQUEUE -> A=5\\nFF    ; HALT",
+      3: "74 AB ; MOV A, #0xAB\\n54 0F ; ANL A, #0x0F (Mask high nibble -> A=0x0B)\\nFF    ; HALT",
+      4: "74 00 ; MOV A, #0\\n04    ; INC A -> A=1\\n80 02 ; SJMP +2 (skips next MOV)\\n74 99 ; MOV A, #0x99 (SKIPPED)\\n04    ; INC A -> A=2\\nFF    ; HALT"
+    };
+
+    function setPreset(n) {
+      if (PRESETS[n]) {
+        $('code').value = PRESETS[n];
+        loadCode();
       }
     }
 
