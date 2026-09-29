@@ -150,7 +150,10 @@ public class CoreProcess {
                     String payload = raw.length() > verb.length() ? raw.substring(verb.length()).trim() : "";
 
                     if (verb.equals("QUIT") || verb.equals("EXIT")) {
-                        log("SHUTDOWN", "CORE", "UI requested termination.");
+                        toUI.println("BYE");
+                        break;
+                    } else if (verb.equals("SHUTDOWN")) {
+                        log("SHUTDOWN", "CORE", "Server shutdown requested.");
                         toUI.println("BYE");
                         serverRunning = false;
                         try { serverSocket.close(); } catch (Exception ignored) {}
@@ -164,6 +167,12 @@ public class CoreProcess {
                         if (!payload.isEmpty()) {
                             byte[] parsed = parseHex(payload);
                             if (parsed.length > 0) {
+                                if (parsed[parsed.length - 1] != (byte) 0xFF) {
+                                    byte[] withHalt = new byte[parsed.length + 1];
+                                    System.arraycopy(parsed, 0, withHalt, 0, parsed.length);
+                                    withHalt[parsed.length] = (byte) 0xFF;
+                                    parsed = withHalt;
+                                }
                                 initialize(parsed);
                                 log("LOAD", "CORE", "Loaded " + parsed.length + " bytes of custom bytecode.");
                             } else {

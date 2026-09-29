@@ -50,6 +50,9 @@ public class CPU {
 
     private void decode() {
         switch (currOpcode) {
+            case 0x00:
+                currInstrcName = "NOP";
+                break;
             case 0x74:
                 currInstrcName = "MOV A, #data";
                 break;
@@ -96,6 +99,10 @@ public class CPU {
 
     private void execute() {
         switch (currOpcode) {
+            case 0x00: // NOP
+                statechangelog = "NOP";
+                break;
+
             case 0x74: // MOV A, #data
                 updateAcc(fetchOper());
                 break;

@@ -332,6 +332,7 @@ public class SimulatorUI extends JFrame {
                     });
                     // Start listening for state updates from Core
                     startCoreListener();
+                    sendCommand("STATE");
                 } catch (IOException ex) {
                     attempts++;
                     final int attemptSnapshot = attempts;
