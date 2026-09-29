@@ -38,8 +38,16 @@ public class UIProcess {
         webServer.createContext("/api/cmd", new ApiHandler());
         webServer.start();
 
-        System.out.println("[JAVA WEB SERVER] Running at: http://localhost:" + WEB_PORT);
-        System.out.println("Open http://localhost:" + WEB_PORT + " in Chrome/Edge for the 6-panel dashboard.\n");
+        HttpServer altServer = null;
+        try {
+            altServer = HttpServer.create(new InetSocketAddress(8000), 0);
+            altServer.createContext("/", new WebHandler());
+            altServer.createContext("/api/cmd", new ApiHandler());
+            altServer.start();
+        } catch (Exception ignored) {}
+
+        System.out.println("[JAVA WEB SERVER] Running at: http://localhost:" + WEB_PORT + " (also http://localhost:8000)");
+        System.out.println("Open http://localhost:" + WEB_PORT + " or http://localhost:8000 in Chrome/Edge for the 6-panel dashboard.\n");
 
         lastState = sendCommandToCore("STATE");
         printConsoleDashboard(lastState);
