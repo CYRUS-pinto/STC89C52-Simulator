@@ -1,16 +1,30 @@
 public class Registers {
-    public int A = 0; // Accumulator — most arithmetic goes through A
-    public int B = 0; // B register — used as secondary operand for MUL/DIV
+    public int A=0;
+    public int B=0;
+    public int[] R=new int[8];
+    public int PC=0x0000;
 
-    // 4 register banks, each with 8 general-purpose registers (R0–R7)
-    public int[][] R = new int[4][8];
-
-    public int getR(int index, int bank) {
-        return R[bank][index];
+public void reset(){
+    A=0;
+    B=0;
+    for(int i=0;i<8;i++){
+        R[i]=0;
     }
-
-    public void setR(int index, int bank, int val) {
-        // 0xFF mask keeps the integer behaving like real 8-bit hardware.
-        R[bank][index] = val & 0xFF;
+    PC=0x0000;
+}
+public void setPC(int address) {
+    this.PC = address & 0x1FFF; 
+}
+public int getR(int index){
+    if(index<0||index>7){
+        throw new IllegalArgumentException("Register index must be between 0 and 7");
     }
-}
+    return R[index] & 0xFF;
+}
+public void setR(int index, int value){
+    if(index<0||index>7){
+        throw new IllegalArgumentException("Register index must be between 0 and 7");
+    }
+    R[index]=value & 0xFF;
+}
+}
