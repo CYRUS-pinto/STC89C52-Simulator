@@ -1,3 +1,4 @@
+
 package logger;
 
 import java.io.BufferedReader;
@@ -5,18 +6,14 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.nio.charset.StandardCharsets;
 
 public class LoggerProcess {
 
     private static final int PORT = 5001;
-
-    private static final String LOG_FILE = "simulator.log";
-
     private static boolean running = true;
 
     private static LogHandler handler =
-            new LogHandler(LOG_FILE);
+            new LogHandler("simulator.log");
 
     public static void main(String[] args) {
 
@@ -26,16 +23,12 @@ public class LoggerProcess {
             try {
                 port = Integer.parseInt(args[0]);
             } catch (NumberFormatException e) {
-                System.err.println("Invalid port number.");
+                System.out.println("Invalid port number.");
                 return;
             }
         }
 
-        System.out.println("==================================");
-        System.out.println("     STC89C52 LOGGER PROCESS");
-        System.out.println("==================================");
-        System.out.println("Starting Logger Process...");
-        System.out.println("Port: " + port);
+        System.out.println("Logger Process started on port " + port);
 
         startServer(port);
     }
@@ -44,84 +37,68 @@ public class LoggerProcess {
 
         try (ServerSocket server = new ServerSocket(port)) {
 
-            handler.writeLog(
-                    "INFO", "LOGGER",
-                    "Logger process started.");
+            handler.writeLog("INFO", "LOGGER",
+                    "Logger process started");
 
             while (running) {
 
-                System.out.println(
-                        "\nWaiting for CoreProcess connection...");
+                System.out.println("Waiting for CoreProcess...");
 
                 try (Socket socket = server.accept();
-                     BufferedReader reader =
-                             new BufferedReader(
-                                     new InputStreamReader(
-                                             socket.getInputStream(),
-                                             StandardCharsets.UTF_8))) {
+                     BufferedReader input = new BufferedReader(
+                             new InputStreamReader(socket.getInputStream()))) {
 
-                    System.out.println(
-                            "CoreProcess connected: "
-                                    + socket.getInetAddress());
+                    System.out.println("CoreProcess connected.");
 
-                    handleConnection(reader);
+                    readMessages(input);
 
                 } catch (IOException e) {
-
-                    System.err.println(
-                            "Connection error: " + e.getMessage());
+                    System.out.println("Connection error: " + e.getMessage());
                 }
             }
 
-            handler.writeLog(
-                    "INFO", "LOGGER",
-                    "Logger process stopped.");
+            handler.writeLog("INFO", "LOGGER",
+                    "Logger process stopped");
 
         } catch (IOException e) {
-
-            System.err.println(
-                    "Unable to start Logger Server: "
-                            + e.getMessage());
+            System.out.println("Could not start server: " + e.getMessage());
         }
     }
 
-    private static void handleConnection(
-            BufferedReader reader) throws IOException {
+    private static void readMessages(BufferedReader input)
+            throws IOException {
 
         String message;
 
-        while (running && (message = reader.readLine()) != null) {
+        while (running && (message = input.readLine()) != null) {
 
             if (message.trim().isEmpty()) {
                 continue;
             }
 
-            if (isShutdownMessage(message)) {
+            if (message.equals("LOG|SHUTDOWN")
+                    || message.startsWith("LOG|SHUTDOWN|")) {
 
-                handler.writeLog(
-                        "INFO", "LOGGER",
-                        "Shutdown request received.");
+                handler.writeLog("INFO", "LOGGER",
+                        "Shutdown request received");
 
                 running = false;
                 break;
             }
 
-            processLogMessage(message);
+            processMessage(message);
         }
 
         System.out.println("CoreProcess disconnected.");
     }
 
-    private static void processLogMessage(String message) {
+    private static void processMessage(String message) {
 
         String[] parts = message.split("\\|", 4);
 
         if (parts.length != 4 || !parts[0].equals("LOG")) {
-
-            handler.writeLog(
-                    "WARNING", "INVALID",
+            handler.writeLog("WARNING", "INVALID",
                     "Invalid log message: " + message);
-
             return;
         }
 
@@ -130,35 +107,21 @@ public class LoggerProcess {
         String details = parts[3].trim();
 
         if (category.isEmpty() || details.isEmpty()) {
-
-            handler.writeLog(
-                    "WARNING", "INVALID",
-                    "Incomplete log message.");
-
+            handler.writeLog("WARNING", "INVALID",
+                    "Incomplete log message");
             return;
         }
 
-        if (!level.equals("INFO")
-                && !level.equals("ERROR")
-                && !level.equals("WARNING")
-                && !level.equals("DEBUG")) {
+        if (!level.equals("INFO") &&
+            !level.equals("ERROR") &&
+            !level.equals("WARNING") &&
+            !level.equals("DEBUG")) {
 
-            handler.writeLog(
-                    "WARNING", "INVALID",
+            handler.writeLog("WARNING", "INVALID",
                     "Unknown log level: " + level);
-
             return;
         }
 
         handler.writeLog(level, category, details);
-    }
-
-    private static boolean isShutdownMessage(String message) {
-
-        String[] parts = message.split("\\|", 4);
-
-        return parts.length >= 3
-                && parts[0].equals("LOG")
-                && parts[1].equals("SHUTDOWN");
     }
 }
