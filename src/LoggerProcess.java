@@ -113,7 +113,7 @@ public class LoggerProcess {
         if (!level.equals("INFO") &&
             !level.equals("ERROR") &&
             !level.equals("WARNING") &&
-            !level.equals("DEBUG")) {
+            !level.equals("DEBUG") && !level.equals("EXEC") && !level.equals("LOAD") && !level.equals("HALT") && !level.equals("RESET")) {
 
             handler.writeLog("WARNING", "INVALID",
                     "Unknown log level: " + level);
