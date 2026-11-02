@@ -34,7 +34,7 @@ public class DataStructures {
     }
 
     public int pop() {
-        if (sp < 0x07) throw new RuntimeException("Stack Underflow: SP=" + sp);
+        if (sp <= 0x07) throw new RuntimeException("Stack Underflow: SP=" + sp);
         int val = stack[sp];
         sp--;
         return val;
