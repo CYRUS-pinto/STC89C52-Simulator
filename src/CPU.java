@@ -9,6 +9,12 @@ public class CPU {
     private int currOpcode = 0;
     private String currInstrcName;
     private String statechangelog;
+    public String fetchLog = "";
+    public String decodeLog = "";
+
+    public int getCurrOpcode() { return currOpcode; }
+    public String getCurrInstrcName() { return currInstrcName; }
+    public String getStatechangelog() { return statechangelog; }
 
     public CPU(Registers regs, Memory mem, DataStructures ds, PSW psw) {
         this.regs = regs;
@@ -36,12 +42,17 @@ public class CPU {
     }
 
     private void fetch() {
+        int fetchPC = pc;
         currOpcode = mem.readCode(pc);
         pc++;
+        fetchLog = "PC=0x" + toHex(fetchPC, 4) + " -> Opcode 0x" + toHex(currOpcode, 2);
     }
 
     private void decode() {
         switch (currOpcode) {
+            case 0x00:
+                currInstrcName = "NOP";
+                break;
             case 0x74:
                 currInstrcName = "MOV A, #data";
                 break;
@@ -70,6 +81,7 @@ public class CPU {
                 currInstrcName = "Unknown";
                 break;
         }
+        decodeLog = currInstrcName + " [0x" + toHex(currOpcode, 2) + "]";
     }
 
     private int fetchOper() {
@@ -87,6 +99,10 @@ public class CPU {
 
     private void execute() {
         switch (currOpcode) {
+            case 0x00: // NOP
+                statechangelog = "NOP";
+                break;
+
             case 0x74: // MOV A, #data
                 updateAcc(fetchOper());
                 break;
