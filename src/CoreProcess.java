@@ -210,6 +210,20 @@ public class CoreProcess {
                             toUI.println("HALTED");
                         }
                         log("STOP", "CORE", "Execution halted by UI.");
+                    } else if (verb.equals("CRC")) {
+                        synchronized (cpuLock) {
+                            String dataStr = payload.isEmpty() ? "123456789" : payload;
+                            int crc = CRC24b.calculate(dataStr);
+                            CRC24b.applyToRegisters(regs, psw, crc);
+                            int high = CRC24b.getHighByte(crc);
+                            int mid = CRC24b.getMidByte(crc);
+                            int low = CRC24b.getLowByte(crc);
+                            String hexStr = CRC24b.formatHex(crc);
+
+                            log("INFO", "CRC", String.format("Calculated CRC-24b for '%s': %s (R5=%02X, R6=%02X, R7=%02X)", dataStr, hexStr, high, mid, low));
+                            toUI.println(String.format("CRC_RESULT|%s|R5=%02X|R6=%02X|R7=%02X", hexStr, high, mid, low));
+                            emitState(toUI);
+                        }
                     } else if (verb.equals("STATE") || verb.equals("GET_STATE")) {
                         synchronized (cpuLock) {
                             emitState(toUI);

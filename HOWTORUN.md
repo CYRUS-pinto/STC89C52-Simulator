@@ -20,11 +20,22 @@ Open a terminal in the `STC89C52-Simulator/` folder and run:
 javac -cp src src\CPU.java src\PSW.java src\Registers.java src\Memory.java src\DataStructures.java src\LoggerProcess.java src\CoreProcess.java src\SimulatorUI.java
 ```
 
-Or to also compile tests and programs:
+To compile and run all verification tests and benchmarks:
 ```powershell
-javac -cp src src\*.java
-javac -cp src tests\TestCPU.java
-javac -cp src programs\QueueTest.java
+# Compile all source, test, and benchmark files
+javac -d bin src/*.java tests/*.java programs/*.java
+
+# Run CPU Opcode unit tests (14/14 tests)
+java -cp bin TestCPU
+
+# Run Circular FIFO Queue validation (3/3 tests)
+java -cp bin QueueTest
+
+# Run Week 4 Allocated Algorithm: CRC-24b 3GPP LTE suite (6/6 tests)
+java -cp bin TestCRC24b
+
+# Run Performance Benchmark suite (Standalone vs Multi-Process Socket IPC)
+java -cp bin BenchmarkCRC
 ```
 
 ---
@@ -146,12 +157,16 @@ STC89C52-Simulator/
 │   ├── DataStructures.java ← Stack + Circular Queue
 │   ├── CoreProcess.java    ← Core IPC process (port 5000)
 │   ├── UIProcess.java      ← Web dashboard + CLI UI (port 8080 → 5000)
+│   ├── CRC24b.java         ← Week 4 Allocated Algorithm (0x800063 LTE-B)
 │   ├── SimulatorUI.java    ← Swing Desktop UI process (client→5000)
 │   └── LoggerProcess.java  ← Logger IPC process (port 5001)
 ├── tests/
-│   └── TestCPU.java        ← Unit tests (14 test cases)
+│   ├── TestCPU.java        ← Unit tests (14 test cases)
+│   ├── TestCRC24b.java     ← CRC-24b unit tests (6 test cases)
+│   └── LoggerProcessTest.java ← Logger test client
 ├── programs/
-│   └── QueueTest.java      ← Queue FIFO validation program
+│   ├── QueueTest.java      ← Queue FIFO validation program
+│   └── BenchmarkCRC.java   ← Standalone vs Socket IPC Benchmark
 └── docs/
     ├── decisions/decision-log.md
     ├── queue-flowchart.md
