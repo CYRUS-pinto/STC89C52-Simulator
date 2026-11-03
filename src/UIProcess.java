@@ -25,7 +25,7 @@ public class UIProcess {
     private static final int CORE_PORT = 5000;
     private static final int WEB_PORT = 8080;
     private static final String OFFLINE = "ERROR|CORE_OFFLINE";
-    private static final Set<String> WEB_COMMANDS = Set.of("STEP", "RUN", "STOP", "RESET", "LOAD", "STATE");
+    private static final Set<String> WEB_COMMANDS = Set.of("STEP", "RUN", "STOP", "RESET", "LOAD", "STATE", "CRC");
 
     // Last real STATE line received from Core (null until the first one arrives)
     private static volatile String lastState = null;
@@ -103,7 +103,9 @@ public class UIProcess {
             if (query != null && query.startsWith("cmd=")) {
                 String raw = URLDecoder.decode(query.substring(4), StandardCharsets.UTF_8).trim();
                 String verb = raw.split("\\s+", 2)[0].toUpperCase();
-                if (WEB_COMMANDS.contains(verb)) {
+                if (verb.equals("CRC") && !raw.matches("(?i)CRC\\s+[0-9A-Za-z]{1,64}")) {
+                    result = "ERROR|INVALID_CRC_PAYLOAD";
+                } else if (WEB_COMMANDS.contains(verb)) {
                     // keep any payload (e.g. hex for LOAD) untouched
                     String payload = raw.length() > verb.length() ? raw.substring(verb.length()) : "";
                     result = sendCommandToCore(verb + payload);
@@ -144,7 +146,7 @@ public class UIProcess {
                     sb.append(resp).append("\n");
                     if (resp.startsWith("STATE|")) lastState = resp;
                     if (resp.equals("HALTED") || resp.equals("RESET_DONE")) break;
-                    if (cmd.equals("STEP") || cmd.equals("RESET") || cmd.startsWith("LOAD")) break; // single-reply commands
+                    if (cmd.equals("STEP") || cmd.equals("RESET") || cmd.startsWith("LOAD") || cmd.startsWith("CRC")) break; // single-reply commands
                 }
             } catch (SocketTimeoutException timeout) {
                 // Core did not send more; return whatever we already got
@@ -315,6 +317,7 @@ public class UIProcess {
           <button style='font-size: 10.5px; padding: 4px 8px; background: #065f46; border-color: #10b981;' onclick='setPreset(2)'>[ Preset 2: FIFO Queue ]</button>
           <button style='font-size: 10.5px; padding: 4px 8px; background: #78350f; border-color: #f59e0b;' onclick='setPreset(3)'>[ Preset 3: Logic (ANL) ]</button>
           <button style='font-size: 10.5px; padding: 4px 8px; background: #4c1d95; border-color: #8b5cf6;' onclick='setPreset(4)'>[ Preset 4: Jump (SJMP) ]</button>
+          <button style='font-size: 10.5px; padding: 4px 8px; background: #be185d; border-color: #f43f5e;' onclick='runCRC()'>[ Preset 5: CRC-24b LTE-B ]</button>
         </div>
         <textarea id='code' placeholder='Enter hex bytes, e.g.: 74 FE 24 03 04 54 0F E0 74 09 E0 D0 FF' class='inner-box'>74 FE 24 03 04 54 0F E0 74 09 E0 D0 FF</textarea>
         <div style='font-size: 10.5px; color: #94a3b8; line-height: 1.4; border-top: 1px solid #334155; padding-top: 6px;'>
@@ -503,6 +506,16 @@ public class UIProcess {
     function loadCode() {
       const code = $('code').value.trim();
       if (code) send('LOAD ' + code);
+    }
+
+    async function runCRC() {
+      const input = prompt("Enter telecom payload for CRC-24b (Polynomial 0x800063):", "123456789");
+      if (input) {
+        const res = await fetch('/api/cmd?cmd=' + encodeURIComponent('CRC ' + input));
+        const txt = await res.text();
+        alert("STC89C52 CRC-24b Result:\\n\\n" + txt + "\\n\\nRegisters R5 (High), R6 (Mid), R7 (Low) updated in CPU Core!");
+        send('STATE');
+      }
     }
 
     window.addEventListener('DOMContentLoaded', () => {

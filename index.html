@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>STC89C52 SIMULATOR</title>
+        <style>
+  body {
+  background-color: #1e1e2e;
+  color: #e0e0e0;
+  font-family: monospace;
+}
+button {
+  padding: 8px 14px;
+  border: none;
+  border-radius: 4px;
+  font-family: monospace;
+  cursor: pointer;
+}
+#load    { background-color: #2a3a4e; color: white; }
+#step    { background-color: #2ecc71; color: #0b1a10; }
+#run     { background-color: #3fb8f0; color: #08202e; }
+#stop    { background-color: #f0506e; color: white; }
+#reset   { background-color: #f0a030; color: #2a1a00; }
+#refresh { background-color: #5b7a99; color: white; }
+
+.preset {
+  background-color: #3a3a55;
+  color: #e0e0e0;
+  border: 1px solid #5a5a80;
+  font-size: 12px;
+  padding: 5px 8px;
+  margin: 0 4px 6px 0;
+}
+.preset:hover {
+  background-color: #4a4a70;
+}
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+.panel {
+  background-color: #2a2a3c;
+  border: 1px solid #444;
+  border-radius: 6px;
+  padding: 12px;
+}
+textarea {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+h1 {
+  font-size: 20px;
+  text-align: center;
+}
+.panel h2 {
+  font-size: 14px;
+  color: #4fc3f7;
+  margin-top: 0;
+}
+.panel p {
+  margin: 4px 0;
+  font-size: 13px;
+}
+
+.flag {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background-color: #1a1a28;
+  color: #667;
+  font-size: 12px;
+}
+.flag.on {
+  background-color: #2ecc71;
+  color: #0b1a10;
+}
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+</style>
+    </head>
+    <body>
+        <h1>STC89C52 SIMULATOR</h1>
+        
+        <button id="load" onclick="send('LOAD')">Load Hex / Code</button>
+        <button id="step"  onclick="send('STEP')">Step (F->D->E)</button>
+        <button id="run"  onclick="send('RUN')">Run Continuous</button>
+        <button id="stop" onclick="send('STOP')">Stop / Halt</button>
+        <button id="reset" onclick="send('RESET')">Reset</button>
+        <button id="refresh" onclick="send('STATE')">Refresh</button>
+       
+        <div class="grid">
+
+        <div class="panel">
+        <h2>Editor</h2>
+          <button class="preset" onclick="preset('74 FE 24 03 04 FF')">Preset 1: Math &amp; Flags</button>
+         <button class="preset" onclick="preset('74 0A E0 74 1E E0 74 05 E0 D0 D0 D0 FF')">Preset 2: FIFO Queue</button>
+         <button class="preset" onclick="preset('74 AB 54 0F FF')">Preset 3: Logic (ANL)</button>
+         <button class="preset" onclick="preset('74 01 80 02 04 04 FF')">Preset 4: Jump (SJMP)</button>
+        <textarea id="editor" rows="4" cols="40">74 0A E0 FF</textarea>
+        </div>
+
+        <div class="panel">
+        <h2>Execution Trace</h2>
+        <p>Fetch:<span id="fetch">--</span></p>
+        <p>Decode:<span id="decode">--</span></p>
+        <p>Execute:<span id="execute">--</span></p>
+        </div>
+
+        <div class="panel">
+        <h2>Registers</h2>
+        <p>PC:<span id="pc">--</span></p>
+        <p>SP:<span id="sp">--</span></p>
+        <p>ACC:<span id="acc">--</span></p>
+        <p>B:<span id="b">--</span></p>
+        <p>R0:<span id="r0">--</span></p>
+        <p>R1:<span id="r1">--</span></p>
+        <p>R2:<span id="r2">--</span></p>
+        <p>R3:<span id="r3">--</span></p>
+        <p>R4:<span id="r4">--</span></p>
+        <p>R5:<span id="r5">--</span></p>
+        <p>R6:<span id="r6">--</span></p>
+        <p>R7:<span id="r7">--</span></p>
+           
+        <h2>Flags</h2>
+        <div>
+        <span class="flag" id="cy">CY: --</span>
+        <span class="flag" id="ac">AC: --</span>
+        <span class="flag" id="ov">OV: --</span>
+        <span class="flag" id="p">P: --</span>
+        </div>
+        </div>
+
+        <div class="panel">
+        <h2>STACK</h2>
+        <p>SP: <span id="sp2">--</span></p>
+        <p> Top of stack: <span id="tos">--</span></p>
+        <p> Depth: <span id="depth">--</span></p> 
+        </div>
+
+        <div class="panel">
+        <h2>QUEUES</h2>
+        <p>Size:<span id="qsize">--</span></p>
+        <p>Capacity:<span id="qcapacity">--</span></p>
+        <p>Front:<span id="qfront">--</span></p>
+        <p>Rear:<span id="qrear">--</span></p>
+        <p>Elements:<span id="qelems">--</span></p>
+        </div>
+
+        <div class="panel">
+        <h2>Memory</h2>
+        <pre id="ram">--</pre>
+        </div>
+        </div>
+        <p>Status: <span id="status">Core offline</span></p>
+
+      <script>
+  function parseState(text) {
+    var parts = text.split("|");
+    var s = {};
+    for (var i = 1; i < parts.length; i++) {
+     var idx = parts[i].indexOf("=");
+     var key = parts[i].substring(0, idx);
+     var value = parts[i].substring(idx + 1);
+     s[key] = value;
+    }
+    return s;
+  }
+
+  function set(id, value) {
+    document.getElementById(id).textContent = value;
+  }
+
+  function setFlag(id, name, value) {
+    var chip = document.getElementById(id);
+    if (value == "true") {
+      chip.textContent = name + ": 1";
+      chip.classList.add("on");
+    } else {
+      chip.textContent = name + ": 0";
+      chip.classList.remove("on");
+    }
+  }
+  var lastState = null;
+ function renderRam(hex) {
+  var text = "";
+  for (var row = 0; row < 16; row++) {
+    var addr = (row * 16).toString(16).toUpperCase().padStart(2, "0");
+    text = text + "0x" + addr + ": ";
+    for (var col = 0; col < 16; col++) {
+      var n = row * 16 + col;
+      text = text + hex.substr(n * 2, 2) + " ";
+    }
+    text = text + "\n";
+  }
+  set("ram", text);
+}
+
+  function render(s) {
+    lastState = s;
+    set("pc", s.PC);
+    set("acc", s.A);
+    set("b", s.B);
+    set("sp", s.SP);
+    set("r0", s.R0);
+    set("r1", s.R1);
+    set("r2", s.R2);
+    set("r3", s.R3);
+    set("r4", s.R4);
+    set("r5", s.R5);
+    set("r6", s.R6);
+    set("r7", s.R7);
+    setFlag("cy", "CY", s.CY);
+    setFlag("ac", "AC", s.AC);
+    setFlag("ov", "OV", s.OV);
+    setFlag("p",  "P",  s.P);
+    set("fetch", s.FETCH);
+    set("decode", s.DECODE);
+    set("execute", s.EXECUTE); 
+    set("sp2", s.SP);
+    set("depth", parseInt(s.SP, 16) - 7);
+    set("qsize", s.Q_SIZE);
+    set("qcapacity", s.Q_CAP);
+    set("qfront", s.Q_FRONT);
+    set("qrear", s.Q_REAR);
+    set("qelems", s.Q_ELEMS);
+    if (s.RAM) {
+  renderRam(s.RAM);
+  var sp = parseInt(s.SP, 16);
+  set("tos", s.RAM.substr(sp * 2, 2));
+}
+  }
+
+  
+
+ 
+
+
+ function setLocked(locked) {
+  var ids = ["load", "step", "run", "reset", "refresh", "editor"];
+  for (var i = 0; i < ids.length; i++) {
+    document.getElementById(ids[i]).disabled = locked;
+  }
+}
+function preset(code) {
+  document.getElementById("editor").value = code;
+}
+
+
+function handleReply(text) {
+  if (text.startsWith("STATE|")) {
+    render(parseState(text));
+    set("status", "Connected to Core");
+    return true;
+  } else {
+    set("status", "Core offline - start Core on port 5000");
+    return false;
+  }
+}
+function askJava(cmd, done) {
+  fetch("/api/cmd?cmd=" + encodeURIComponent(cmd))
+    .then(function (response) { return response.text(); })
+    .then(function (text) {
+      var ok = handleReply(text);
+      if (done) { done(ok); }
+    });
+}
+ function send(cmd) {
+  set("status", "Sent: " + cmd);
+
+  if (cmd == "STEP" || cmd == "RESET" || cmd == "STATE") {
+    askJava(cmd);
+  }
+  if (cmd == "LOAD") {
+    var code = document.getElementById("editor").value;
+    code = code.split("\n").join(" ");
+    askJava("LOAD " + code);
+  }
+  if (cmd == "RUN") {
+    setLocked(true);
+    set("status", "Running... (press Stop)");
+    askJava("RUN", function (ok) {
+      setLocked(false);
+      if (ok) { set("status", "Halted"); }
+    });
+  }
+  if (cmd == "STOP") {
+  askJava("STOP", function (ok) {
+    setLocked(false);
+    if (ok) { set("status", "Stopped"); }
+  });
+}
+}
+</script>
+</script>
+
+    </body>
+</html>
