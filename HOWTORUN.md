@@ -53,11 +53,23 @@ Expected output:
 [Core] Server listening for UIProcess on port 5000...
 ```
 
-**Terminal 3 — UI (Shashidhara's piece)**
+**Terminal 3 — UI Process (Shashidhara's piece)**
+
+You have **two UI choices** (or run both!):
+
+#### Option A: Web Dashboard + CLI (Recommended)
+```powershell
+java -cp src UIProcess
+```
+- Starts a built-in HTTP server on **http://localhost:8080**.
+- Open your browser to see the full **6-panel dark-mode dashboard** (Pipeline trace, Registers, Stack, Circular Queue, RAM Inspector, Assembly Editor).
+- Also accepts commands directly in the terminal (`STEP`, `RUN`, `STOP`, `RESET`, `LOAD <hex>`, `QUIT`).
+
+#### Option B: Swing Desktop GUI
 ```powershell
 java -cp src SimulatorUI
 ```
-A Swing window will open. Status bar should say "Connected to CoreProcess ✓".
+A Swing desktop window will open with buttons for Step, Run, Reset, Load, and live Fetch/Decode/Execute indicators. Status bar will display "Connected to CoreProcess ✓".
 
 ---
 
@@ -133,7 +145,8 @@ STC89C52-Simulator/
 │   ├── Memory.java         ← Code memory + internal RAM
 │   ├── DataStructures.java ← Stack + Circular Queue
 │   ├── CoreProcess.java    ← Core IPC process (port 5000)
-│   ├── SimulatorUI.java    ← Swing UI process (client→5000)
+│   ├── UIProcess.java      ← Web dashboard + CLI UI (port 8080 → 5000)
+│   ├── SimulatorUI.java    ← Swing Desktop UI process (client→5000)
 │   └── LoggerProcess.java  ← Logger IPC process (port 5001)
 ├── tests/
 │   └── TestCPU.java        ← Unit tests (14 test cases)
