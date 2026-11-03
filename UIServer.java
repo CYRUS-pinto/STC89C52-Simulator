@@ -16,7 +16,7 @@ public class UIServer {
         HttpServer server = HttpServer.create(new InetSocketAddress(8080), 0);
 
         server.createContext("/", exchange -> {
-            // Look for index.html next to where Java was started, then in src/
+            
             Path p = Paths.get("index.html");
             if (!Files.exists(p)) {
                 p = Paths.get("src/index.html");
