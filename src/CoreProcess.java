@@ -3,7 +3,7 @@ import java.net.*;
 import java.util.concurrent.*;
 
 /**
- * CoreProcess — Chrisel Lobo (25190110)
+ * CoreProcess â€” Chrisel Lobo (25190110)
  *
  * Week 4 requirement: Core Execution Engine running as an INDEPENDENT process.
  * - Manages CPU execution, Memory, Stack, and Circular Queue.
@@ -62,7 +62,7 @@ public class CoreProcess {
 
     public static void main(String[] args) {
         System.out.println("=====================================================================");
-        System.out.println("  STC89C52 MULTI-PROCESS SIMULATOR — CORE EXECUTION PROCESS (PORT " + CORE_PORT + ")");
+        System.out.println("  STC89C52 MULTI-PROCESS SIMULATOR â€” CORE EXECUTION PROCESS (PORT " + CORE_PORT + ")");
         System.out.println("  Owner: Chrisel Lobo (25190110) | Module: CPU, Memory, Stack, Queue");
         System.out.println("=====================================================================");
 
@@ -128,7 +128,7 @@ public class CoreProcess {
         }
     }
 
-    // ── Client connection handler ──────────────────────────────────────────
+    // â”€â”€ Client connection handler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     static class ClientHandler implements Runnable {
         private final Socket socket;
 
@@ -210,6 +210,55 @@ public class CoreProcess {
                             toUI.println("HALTED");
                         }
                         log("STOP", "CORE", "Execution halted by UI.");
+                    
+
+                    } else if (verb.equals("CRC")) {
+                        synchronized (cpuLock) {
+                            String dataStr = payload.isEmpty() ? "123456789" : payload;
+                            int crcVal = CRC24b.calculateString(dataStr);
+                            int[] r = CRC24b.to8051Registers(crcVal);
+                            regs.setR(5, 0, r[0]);
+                            regs.setR(6, 0, r[1]);
+                            regs.setR(7, 0, r[2]);
+                            regs.A = r[2];
+                            log("INFO", "CRC", "Calculated CRC-24b for '" + dataStr + "': 0x" + String.format("%06X", crcVal) + " (R5=0x" + String.format("%02X", r[0]) + ", R6=0x" + String.format("%02X", r[1]) + ", R7=0x" + String.format("%02X", r[2]) + ")");
+                            emitState(toUI);
+                            toUI.println(String.format("CRC|CHECKSUM=0x%06X|R5=%02X|R6=%02X|R7=%02X", crcVal, r[0], r[1], r[2]));
+                        }
+                    } else if (verb.equals("CRC_TEST")) {
+                        synchronized (cpuLock) {
+                            String dataStr = payload.isEmpty() ? "123456789" : payload;
+                            byte[] rawBytes = dataStr.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                            int crcVal = CRC24b.calculate(rawBytes);
+                            int[] r = CRC24b.to8051Registers(crcVal);
+                            regs.setR(5, 0, r[0]);
+                            regs.setR(6, 0, r[1]);
+                            regs.setR(7, 0, r[2]);
+                            regs.A = r[2];
+
+                            byte[] codeword = CRC24b.encode(rawBytes);
+                            int cleanSyn = CRC24b.decode(codeword);
+
+                            byte[] noisy1 = CRC24b.inject1BitError(codeword, 0, 0);
+                            int syn1 = CRC24b.decode(noisy1);
+
+                            byte[] noisy2 = CRC24b.inject2BitError(codeword, 0, 0);
+                            int syn2 = CRC24b.decode(noisy2);
+
+                            StringBuilder cwHex = new StringBuilder();
+                            for (byte b : codeword) {
+                                cwHex.append(String.format("%02X ", b & 0xFF));
+                            }
+
+                            log("INFO", "CRC", "CRC-24b Encoded: 0x" + String.format("%06X", crcVal) + " for '" + dataStr + "'");
+                            log("INFO", "CRC", "Clean Codeword Syndrome: 0x" + String.format("%06X", cleanSyn) + " [VALID PACKET]");
+                            log("WARNING", "CRC", "1-Bit Noise Injected -> Syndrome: 0x" + String.format("%06X", syn1) + " [ERROR DETECTED]");
+                            log("WARNING", "CRC", "2-Bit Burst Injected  -> Syndrome: 0x" + String.format("%06X", syn2) + " [BURST DETECTED]");
+
+                            emitState(toUI);
+                            toUI.println(String.format("CRC_TEST|ORIGINAL=%s|CHECKSUM=0x%06X|R5=%02X|R6=%02X|R7=%02X|CODEWORD=%s|CLEAN=0x%06X|BIT1=0x%06X|BIT2=0x%06X",
+                                    dataStr, crcVal, r[0], r[1], r[2], cwHex.toString().trim(), cleanSyn, syn1, syn2));
+                        }
                     } else if (verb.equals("STATE") || verb.equals("GET_STATE")) {
                         synchronized (cpuLock) {
                             emitState(toUI);
@@ -229,7 +278,7 @@ public class CoreProcess {
         }
     }
 
-    // ── Build comprehensive STATE string for both Web UI and Swing UI ─────
+    // â”€â”€ Build comprehensive STATE string for both Web UI and Swing UI â”€â”€â”€â”€â”€
     private static void emitState(PrintWriter toUI) {
         StringBuilder sb = new StringBuilder();
         sb.append("STATE");

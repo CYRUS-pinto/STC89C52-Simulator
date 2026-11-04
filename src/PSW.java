@@ -57,4 +57,7 @@ public class PSW {
         }
         p = (bits % 2 != 0);
     }
+
+    public void setCy(boolean val) { this.cy = val; }
+    public void setOv(boolean val) { this.ov = val; }
 }
