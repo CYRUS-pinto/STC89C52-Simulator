@@ -56,17 +56,41 @@ public class CPU {
             case 0x74:
                 currInstrcName = "MOV A, #data";
                 break;
+            case 0x75:
+                currInstrcName = "MOV direct, #data";
+                break;
             case 0x24:
                 currInstrcName = "ADD A, #data";
+                break;
+            case 0x94:
+                currInstrcName = "SUBB A, #data";
+                break;
+            case 0xA4:
+                currInstrcName = "MUL AB";
+                break;
+            case 0x84:
+                currInstrcName = "DIV AB";
                 break;
             case 0x04:
                 currInstrcName = "INC A";
                 break;
+            case 0x14:
+                currInstrcName = "DEC A";
+                break;
             case 0x54:
                 currInstrcName = "ANL A, #data";
                 break;
+            case 0x44:
+                currInstrcName = "ORL A, #data";
+                break;
+            case 0x64:
+                currInstrcName = "XRL A, #data";
+                break;
             case 0x80:
                 currInstrcName = "SJMP rel";
+                break;
+            case 0xC0:
+                currInstrcName = "PUSH direct";
                 break;
             case 0xE0:
                 currInstrcName = "Enqueue";
@@ -107,6 +131,21 @@ public class CPU {
                 updateAcc(fetchOper());
                 break;
 
+            case 0x75: { // MOV direct, #data
+                int dir = fetchOper();
+                int val = fetchOper();
+                if (dir == 0xF0) {
+                    regs.B = val & 0xFF;
+                    statechangelog = "B : -> " + toHex(regs.B, 2);
+                } else if (dir == 0xE0) {
+                    updateAcc(val);
+                } else {
+                    mem.writeRAM(dir, val);
+                    statechangelog = "RAM[0x" + toHex(dir, 2) + "] : -> " + toHex(val, 2);
+                }
+                break;
+            }
+
             case 0x24: { // ADD A, #data
                 int before = regs.A;
                 int operand = fetchOper();
@@ -117,12 +156,66 @@ public class CPU {
                 break;
             }
 
+            case 0x94: { // SUBB A, #data
+                int before = regs.A;
+                int operand = fetchOper();
+                int borrow = psw.isCy() ? 1 : 0;
+                int result = before - operand - borrow;
+                psw.setCy(result < 0);
+                boolean sign1 = (before & 0x80) != 0;
+                boolean sign2 = (operand & 0x80) != 0;
+                boolean signR = ((result & 0xFF) & 0x80) != 0;
+                psw.setOv((sign1 != sign2) && (sign1 != signR));
+                updateAcc(result);
+                statechangelog += " (CY=" + psw.isCy() + " OV=" + psw.isOv() + ")";
+                break;
+            }
+
+            case 0xA4: { // MUL AB
+                int prod = regs.A * regs.B;
+                updateAcc(prod & 0xFF);
+                regs.B = (prod >> 8) & 0xFF;
+                psw.setOv(prod > 0xFF);
+                psw.setCy(false);
+                statechangelog = "MUL AB: A=" + toHex(regs.A, 2) + " B=" + toHex(regs.B, 2) + " OV=" + psw.isOv();
+                break;
+            }
+
+            case 0x84: { // DIV AB
+                if (regs.B == 0) {
+                    psw.setOv(true);
+                    psw.setCy(false);
+                    statechangelog = "DIV AB: Divide by zero (OV=true)";
+                } else {
+                    int quot = regs.A / regs.B;
+                    int rem = regs.A % regs.B;
+                    updateAcc(quot);
+                    regs.B = rem & 0xFF;
+                    psw.setOv(false);
+                    psw.setCy(false);
+                    statechangelog = "DIV AB: A=" + toHex(regs.A, 2) + " B=" + toHex(regs.B, 2);
+                }
+                break;
+            }
+
             case 0x04: // INC A
                 updateAcc(regs.A + 1);
                 break;
 
+            case 0x14: // DEC A
+                updateAcc(regs.A - 1);
+                break;
+
             case 0x54: // ANL A, #data
                 updateAcc(regs.A & fetchOper());
+                break;
+
+            case 0x44: // ORL A, #data
+                updateAcc(regs.A | fetchOper());
+                break;
+
+            case 0x64: // XRL A, #data
+                updateAcc(regs.A ^ fetchOper());
                 break;
 
             case 0x80: { // SJMP rel
@@ -130,6 +223,15 @@ public class CPU {
                 if (offset > 127) offset -= 256;
                 pc += offset;
                 statechangelog = "PC : " + toHex(pc, 4);
+                break;
+            }
+
+            case 0xC0: { // PUSH direct
+                int dir = fetchOper();
+                int val = (dir == 0xE0) ? regs.A : (dir == 0xF0) ? regs.B : mem.readRAM(dir);
+                ds.push(val);
+                mem.writeRAM(ds.sp, val);
+                statechangelog = "PUSH 0x" + toHex(val, 2) + " to Stack (SP=" + toHex(ds.sp, 2) + ")";
                 break;
             }
 
