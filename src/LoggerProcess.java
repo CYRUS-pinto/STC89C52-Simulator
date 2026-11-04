@@ -1,10 +1,19 @@
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.ServerSocket;
 import java.net.Socket;
 
+/**
+ * LoggerProcess — STC89C52 Multi-Process Simulator Logging Daemon
+ * Author: Arnold Noah (25190106) — Logging & Audit Subsystem
+ *
+ * Architecture:
+ * - Operates as an independent POSIX TCP socket server on Port 5001.
+ * - Receives real-time state telemetry, opcode executions, and CRC-24b results from CoreProcess.
+ * - Validates log levels and protocol envelopes (LOG|<LEVEL>|<CATEGORY>|<DETAILS>).
+ * - Persists audit logs to disk via LogHandler ("simulator.log") with microsecond timestamps.
+ */
 public class LoggerProcess {
 
     private static final int PORT = 5001;
@@ -36,7 +45,7 @@ public class LoggerProcess {
         try (ServerSocket server = new ServerSocket(port)) {
 
             handler.writeLog("INFO", "LOGGER",
-                    "Logger process started");
+                    "Logger process started on port " + port);
 
             while (running) {
 
@@ -110,10 +119,16 @@ public class LoggerProcess {
             return;
         }
 
+        // Support all runtime execution, lifecycle, and verification levels
         if (!level.equals("INFO") &&
             !level.equals("ERROR") &&
             !level.equals("WARNING") &&
-            !level.equals("DEBUG") && !level.equals("EXEC") && !level.equals("LOAD") && !level.equals("HALT") && !level.equals("RESET")) {
+            !level.equals("DEBUG") &&
+            !level.equals("EXEC") &&
+            !level.equals("LOAD") &&
+            !level.equals("HALT") &&
+            !level.equals("RESET") &&
+            !level.equals("CRC")) {
 
             handler.writeLog("WARNING", "INVALID",
                     "Unknown log level: " + level);
