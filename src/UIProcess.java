@@ -25,7 +25,7 @@ public class UIProcess {
     private static final int CORE_PORT = 5000;
     private static final int WEB_PORT = 8080;
     private static final String OFFLINE = "ERROR|CORE_OFFLINE";
-    private static final Set<String> WEB_COMMANDS = Set.of("STEP", "RUN", "STOP", "RESET", "LOAD", "STATE", "CRC");
+    private static final Set<String> WEB_COMMANDS = Set.of("STEP", "RUN", "STOP", "RESET", "LOAD", "STATE", "CRC", "CRC_TEST");
 
     // Last real STATE line received from Core (null until the first one arrives)
     private static volatile String lastState = null;
@@ -86,7 +86,9 @@ public class UIProcess {
     static class WebHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
-            byte[] response = WEB_PAGE.getBytes(StandardCharsets.UTF_8);
+            java.nio.file.Path p = java.nio.file.Paths.get("index.html");
+            if (!java.nio.file.Files.exists(p)) p = java.nio.file.Paths.get("src/index.html");
+            byte[] response = java.nio.file.Files.exists(p) ? java.nio.file.Files.readAllBytes(p) : WEB_PAGE.getBytes(StandardCharsets.UTF_8);
             exchange.getResponseHeaders().set("Content-Type", "text/html; charset=UTF-8");
             exchange.sendResponseHeaders(200, response.length);
             try (OutputStream os = exchange.getResponseBody()) {
@@ -103,9 +105,7 @@ public class UIProcess {
             if (query != null && query.startsWith("cmd=")) {
                 String raw = URLDecoder.decode(query.substring(4), StandardCharsets.UTF_8).trim();
                 String verb = raw.split("\\s+", 2)[0].toUpperCase();
-                if (verb.equals("CRC") && !raw.matches("(?i)CRC\\s+[0-9A-Za-z]{1,64}")) {
-                    result = "ERROR|INVALID_CRC_PAYLOAD";
-                } else if (WEB_COMMANDS.contains(verb)) {
+                if (WEB_COMMANDS.contains(verb)) {
                     // keep any payload (e.g. hex for LOAD) untouched
                     String payload = raw.length() > verb.length() ? raw.substring(verb.length()) : "";
                     result = sendCommandToCore(verb + payload);
@@ -146,7 +146,8 @@ public class UIProcess {
                     sb.append(resp).append("\n");
                     if (resp.startsWith("STATE|")) lastState = resp;
                     if (resp.equals("HALTED") || resp.equals("RESET_DONE")) break;
-                    if (cmd.equals("STEP") || cmd.equals("RESET") || cmd.startsWith("LOAD") || cmd.startsWith("CRC")) break; // single-reply commands
+                    if (cmd.equals("STEP") || cmd.equals("RESET") || cmd.startsWith("LOAD") || cmd.equals("STATE") || cmd.equals("CRC")) break; // single-reply commands
+                    if (cmd.startsWith("CRC_TEST") && resp.startsWith("CRC_TEST|")) break;
                 }
             } catch (SocketTimeoutException timeout) {
                 // Core did not send more; return whatever we already got
@@ -509,11 +510,11 @@ public class UIProcess {
     }
 
     async function runCRC() {
-      const input = prompt("Enter telecom payload for CRC-24b (Polynomial 0x800063):", "123456789");
+      const input = prompt("Enter telecom payload for CRC-24b (g_CRC24B = D^24 + D^23 + D^6 + D^5 + D + 1):", "123456789");
       if (input) {
         const res = await fetch('/api/cmd?cmd=' + encodeURIComponent('CRC ' + input));
         const txt = await res.text();
-        alert("STC89C52 CRC-24b Result:\\n\\n" + txt + "\\n\\nRegisters R5 (High), R6 (Mid), R7 (Low) updated in CPU Core!");
+        alert("STC89C52 Microcontroller CRC-24b Result:\n\n" + txt + "\n\nRegisters R5 (High), R6 (Mid), R7 (Low) updated in CPU Core!");
         send('STATE');
       }
     }

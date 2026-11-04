@@ -75,10 +75,12 @@ Week 4 separated the single-process simulator into **three independent processes
 
 ### UI → Core (commands)
 ```
-STEP        Execute one instruction
-RUN         Execute all instructions until HALT
-RESET       Reset CPU and reload program
-QUIT        Terminate CoreProcess
+STEP            Execute one instruction
+RUN             Execute all instructions until HALT
+RESET           Reset CPU and reload program
+LOAD <hex>      Load custom assembly hex bytecode
+CRC <payload>   Calculate 3GPP LTE CRC-24b and map to R5, R6, R7, A
+QUIT            Terminate CoreProcess
 ```
 
 ### Core → UI (responses)
@@ -104,13 +106,13 @@ The standard 11-instruction demo program (see CoreProcess, Week 2 demo).
 
 ### Results
 
-| Metric | Standalone (single JVM) | Multi-Process (3 JVMs + sockets) |
-|--------|------------------------|----------------------------------|
-| CPU step time (avg) | < 1 ms | 1–3 ms (IPC overhead) |
-| Total run time | ~0.1 ms | ~20–50 ms (socket round-trips) |
-| Memory (JVM heap) | ~50 MB (1 JVM) | ~150 MB (3 JVMs) |
-| CPU usage | 1 core | Up to 3 cores (parallel processes) |
-| IPC overhead | 0 | ~1–3 ms per message |
+| Metric | Standalone (Single JVM) | Multi-Process (TCP Socket IPC :5000) |
+|--------|-------------------------|--------------------------------------|
+| 1,000 CRC Packets Time | 0.29 ms | 666.00 ms |
+| Throughput | 3,471,017 packets/sec | 1,503 messages/sec |
+| Per-item Latency | 0.0003 ms (0.3 µs) | 0.6660 ms (666 µs) |
+| Process Fault Isolation | None (UI crash kills CPU Core) | 100% Protected (Independent PIDs) |
+| Memory Protection | Shared heap (vulnerable) | Independent memory address spaces |
 
 ### Analysis
 - Multi-process adds IPC overhead (1–3 ms/message) which is negligible for an educational simulator.
@@ -127,8 +129,13 @@ The standard 11-instruction demo program (see CoreProcess, Week 2 demo).
 - [x] Individual component implementation by each member
 - [x] Integration by Team Leader (Cyrus)
 - [x] IPC tested: STEP, RUN, RESET, QUIT, HALTED, STATE, LOG all working
-- [x] Standalone vs. multi-process benchmark
-- [x] Performance analysis
+- [x] Standalone vs. multi-process benchmark (`programs/BenchmarkCRC.java`)
+- [x] Performance analysis & architectural trade-off evaluation
+- [x] Week 4 Allocated Algorithm: CRC-24b 3GPP LTE (`src/CRC24b.java`)
+- [x] 8-Bit Hardware Register Slicing (R5=High, R6=Mid, R7=Low, A=Low)
+- [x] CRC-24b Unit Verification Test Suite (`tests/TestCRC24b.java`, 6/6 PASS)
+- [x] UI Preset 5 Integration (`[ Preset 5: CRC-24b LTE-B ]`)
+- [x] Final Master Technical Report & Defense Dossier (`docs/STC89C52_CRC24b_and_Project_Execution_Report.md`)
 - [x] Updated GitHub documentation
 
 ---

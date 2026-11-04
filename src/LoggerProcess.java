@@ -1,125 +1,125 @@
-import java.io.*;
-import java.net.*;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 
-/**
- * LoggerProcess — Arnold Noah (25190106)
- *
- * Week 4 requirement: Logging process running as a SEPARATE process.
- * - Listens on port 5001 for connections from CoreProcess.
- * - Parses messages in the format:  LOG|TYPE|message or LOG|LEVEL|CATEGORY|details
- * - Writes every log entry to:
- *      (a) the console (stdout) with a timestamp
- *      (b) log file called simulator.log in the working directory
- * - Handles graceful shutdown when it receives a LOG|SHUTDOWN|... message.
- *
- * IPC Mechanism: TCP Sockets (POSIX-compatible, cross-platform).
- * Reason for TCP sockets: Simple, reliable, ordered byte stream.
- *   Fits the one-directional Core→Logger communication perfectly.
- *   No shared memory issues, works across processes without a shared heap.
- */
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.ServerSocket;
+import java.net.Socket;
+
 public class LoggerProcess {
 
-    // ── Configuration ──────────────────────────────────────────────────────
-    private static final int PORT       = 5001;
-    private static final String LOGFILE = "simulator.log";
+    private static final int PORT = 5001;
+    private static boolean running = true;
 
-    // ── Timestamp formatter ────────────────────────────────────────────────
-    private static final SimpleDateFormat DATE_FMT =
-            new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
+    private static LogHandler handler =
+            new LogHandler("simulator.log");
 
     public static void main(String[] args) {
-        System.out.println("=====================================================================");
-        System.out.println("  STC89C52 MULTI-PROCESS SIMULATOR — LOGGING PROCESS (PORT " + PORT + ")");
-        System.out.println("  Owner: Arnold Noah (25190106) | Module: Logging & Audit");
-        System.out.println("  Log file: " + new File(LOGFILE).getAbsolutePath());
-        System.out.println("=====================================================================");
 
-        try (ServerSocket server = new ServerSocket(PORT)) {
-            boolean running = true;
+        int port = PORT;
+
+        if (args.length > 0) {
+            try {
+                port = Integer.parseInt(args[0]);
+            } catch (NumberFormatException e) {
+                System.out.println("Invalid port number.");
+                return;
+            }
+        }
+
+        System.out.println("Logger Process started on port " + port);
+
+        startServer(port);
+    }
+
+    private static void startServer(int port) {
+
+        try (ServerSocket server = new ServerSocket(port)) {
+
+            handler.writeLog("INFO", "LOGGER",
+                    "Logger process started");
 
             while (running) {
-                System.out.println("\n[Logger] Listening on port " + PORT + " for CoreProcess...");
-                try (Socket coreSocket = server.accept();
-                     BufferedReader reader = new BufferedReader(
-                             new InputStreamReader(coreSocket.getInputStream()));
-                     PrintWriter fileWriter = new PrintWriter(
-                             new BufferedWriter(new FileWriter(LOGFILE, true)))) {
 
-                    System.out.println("[Logger] CoreProcess connected from " + coreSocket.getRemoteSocketAddress());
+                System.out.println("Waiting for CoreProcess...");
 
-                    // Write session header
-                    String header = "=== Session started " + timestamp() + " ===";
-                    fileWriter.println(header);
-                    System.out.println("[Logger] " + header);
-                    fileWriter.flush();
+                try (Socket socket = server.accept();
+                     BufferedReader input = new BufferedReader(
+                             new InputStreamReader(socket.getInputStream()))) {
 
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        line = line.trim();
-                        if (line.isEmpty()) continue;
+                    System.out.println("CoreProcess connected.");
 
-                        handleMessage(line, fileWriter);
-
-                        // Shutdown request from Core
-                        if (line.startsWith("LOG|SHUTDOWN")) {
-                            running = false;
-                            break;
-                        }
-                    }
-
-                    String footer = "=== Session ended   " + timestamp() + " ===";
-                    fileWriter.println(footer);
-                    System.out.println("[Logger] " + footer);
-                    fileWriter.flush();
+                    readMessages(input);
 
                 } catch (IOException e) {
-                    System.err.println("[Logger] Connection notice: " + e.getMessage());
+                    System.out.println("Connection error: " + e.getMessage());
                 }
             }
 
+            handler.writeLog("INFO", "LOGGER",
+                    "Logger process stopped");
+
         } catch (IOException e) {
-            System.err.println("[Logger] Server socket error on port " + PORT + ": " + e.getMessage());
+            System.out.println("Could not start server: " + e.getMessage());
+        }
+    }
+
+    private static void readMessages(BufferedReader input)
+            throws IOException {
+
+        String message;
+
+        while (running && (message = input.readLine()) != null) {
+
+            if (message.trim().isEmpty()) {
+                continue;
+            }
+
+            if (message.equals("LOG|SHUTDOWN")
+                    || message.startsWith("LOG|SHUTDOWN|")) {
+
+                handler.writeLog("INFO", "LOGGER",
+                        "Shutdown request received");
+
+                running = false;
+                break;
+            }
+
+            processMessage(message);
         }
 
-        System.out.println("[Logger] LoggerProcess terminated.");
+        System.out.println("CoreProcess disconnected.");
     }
 
-    // ── Parse and log one message ──────────────────────────────────────────
-    private static void handleMessage(String raw, PrintWriter fileWriter) {
-        String ts = timestamp();
-        String formatted;
+    private static void processMessage(String message) {
 
-        String[] parts = raw.split("\\|", 4);
-        if (parts.length >= 4 && parts[0].equals("LOG")) {
-            // 4-part: LOG|LEVEL|CATEGORY|details
-            String level = padRight(parts[1], 5);
-            String cat   = padRight(parts[2], 10);
-            formatted = String.format("[%s] [%s] [%s] %s", ts, level, cat, parts[3]);
-        } else if (parts.length >= 3 && parts[0].equals("LOG")) {
-            // 3-part: LOG|TYPE|detail
-            String type   = padRight(parts[1].toUpperCase(), 8);
-            String detail = parts[2];
-            formatted = String.format("[%s] [%s] %s", ts, type, detail);
-        } else {
-            // Unexpected format — log as raw
-            formatted = String.format("[%s] [RAW     ] %s", ts, raw);
+        String[] parts = message.split("\\|", 4);
+
+        if (parts.length != 4 || !parts[0].equals("LOG")) {
+            handler.writeLog("WARNING", "INVALID",
+                    "Invalid log message: " + message);
+            return;
         }
 
-        // Console output
-        System.out.println("[Logger] " + formatted);
+        String level = parts[1].trim().toUpperCase();
+        String category = parts[2].trim();
+        String details = parts[3].trim();
 
-        // File output
-        fileWriter.println(formatted);
-        fileWriter.flush();
-    }
+        if (category.isEmpty() || details.isEmpty()) {
+            handler.writeLog("WARNING", "INVALID",
+                    "Incomplete log message");
+            return;
+        }
 
-    private static String padRight(String s, int n) {
-        return String.format("%-" + n + "s", s);
-    }
+        if (!level.equals("INFO") &&
+            !level.equals("ERROR") &&
+            !level.equals("WARNING") &&
+            !level.equals("DEBUG") && !level.equals("EXEC") && !level.equals("LOAD") && !level.equals("HALT") && !level.equals("RESET")) {
 
-    private static String timestamp() {
-        return DATE_FMT.format(new Date());
+            handler.writeLog("WARNING", "INVALID",
+                    "Unknown log level: " + level);
+            return;
+        }
+
+        handler.writeLog(level, category, details);
     }
 }
