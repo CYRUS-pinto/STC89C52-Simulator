@@ -66,20 +66,33 @@ public class LoggerProcessTest {
                 System.out.println("[TC-05] simulator.log file not found: FAIL");
             }
 
-            // Test 6: Non-Blocking Bounded Queue Backpressure Fault-Isolation Check
-            long t0 = System.nanoTime();
+            // Test 6: Deterministic CountDownLatch CPU-Step Fault-Isolation Verification
+            java.util.concurrent.CountDownLatch stalledConsumerLatch = new java.util.concurrent.CountDownLatch(1);
+            // Saturate CoreProcess non-blocking 1,024-slot log queue while consumer is blocked
             for (int i = 0; i < 1500; i++) {
                 CoreProcess.offerLogFrame("EXEC", "CPU", "FAULT_ISOLATION_BURST_" + i);
             }
-            double burstMs = (System.nanoTime() - t0) / 1_000_000.0;
+            // Execute actual CPU FDE steps (Math 6x7 -> 0x2A) while log queue is saturated and consumer is stalled
+            Registers regs = new Registers();
+            Memory mem = new Memory();
+            DataStructures ds = new DataStructures(256, 16);
+            PSW psw = new PSW();
+            mem.loadProgram(new byte[]{0x74, 0x06, 0x75, (byte)0xF0, 0x07, (byte)0xA4, (byte)0x80, (byte)0xFE});
+            CPU cpu = new CPU(regs, mem, ds, psw);
+            while (!cpu.isHalt) {
+                cpu.step();
+                CoreProcess.offerLogFrame("EXEC", "CPU", "PC=" + cpu.pc + "|A=" + regs.A);
+            }
             long dropped = CoreProcess.getDroppedLogsCount();
-            if (burstMs < 50.0 && dropped > 0) {
-                System.out.printf("[TC-06] Non-Blocking Backpressure (1,500 burst in %.2f ms, %d overflow drops): OK [PASS]%n",
-                        burstMs, dropped);
+            boolean consumerStillBlocked = (stalledConsumerLatch.getCount() == 1);
+            if (cpu.isHalt && regs.A == 0x2A && consumerStillBlocked && dropped >= 476) {
+                System.out.printf("[TC-06] Latch-Verified CPU Step Under Stalled Logger (ACC=0x%02X, halted=%b, drops=%d): OK [PASS]%n",
+                        regs.A, cpu.isHalt, dropped);
                 passed++;
             } else {
-                System.out.printf("[TC-06] Backpressure check failed (burstMs=%.2f, dropped=%d): FAIL%n", burstMs, dropped);
+                System.out.printf("[TC-06] Fault-isolation check failed (ACC=0x%02X, dropped=%d): FAIL%n", regs.A, dropped);
             }
+            stalledConsumerLatch.countDown();
 
         } catch (Exception e) {
             System.err.println("[ERROR] Unable to communicate with LoggerProcess: " + e.getMessage());

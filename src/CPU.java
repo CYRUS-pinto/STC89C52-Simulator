@@ -86,6 +86,12 @@ public class CPU {
             case 0x64:
                 currInstrcName = "XRL A, #data";
                 break;
+            case 0x60:
+                currInstrcName = "JZ rel";
+                break;
+            case 0x70:
+                currInstrcName = "JNZ rel";
+                break;
             case 0x80:
                 currInstrcName = "SJMP rel";
                 break;
@@ -217,6 +223,30 @@ public class CPU {
             case 0x64: // XRL A, #data
                 updateAcc(regs.A ^ fetchOper());
                 break;
+
+            case 0x60: { // JZ rel (Jump if Accumulator == 0)
+                int offset = fetchOper();
+                if (offset > 127) offset -= 256;
+                if (regs.A == 0) {
+                    pc += offset;
+                    statechangelog = "JZ taken -> PC=" + toHex(pc, 4);
+                } else {
+                    statechangelog = "JZ not taken (A=" + toHex(regs.A, 2) + ")";
+                }
+                break;
+            }
+
+            case 0x70: { // JNZ rel (Jump if Accumulator != 0)
+                int offset = fetchOper();
+                if (offset > 127) offset -= 256;
+                if (regs.A != 0) {
+                    pc += offset;
+                    statechangelog = "JNZ taken -> PC=" + toHex(pc, 4);
+                } else {
+                    statechangelog = "JNZ not taken (A=00)";
+                }
+                break;
+            }
 
             case 0x80: { // SJMP rel
                 int offset = fetchOper();

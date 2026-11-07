@@ -211,6 +211,55 @@ public class TestCPU {
                     "0002|true", String.format("%04X|%b", cpu.pc, cpu.isHalt));
         }
 
+        // ── TC18: SUBB A, #data borrow & sign-extension check ──────────────
+        {
+            CPU cpu = newCPU(new byte[]{0x74, 0x02, (byte)0x94, 0x05, (byte)0xFF}); // MOV A,#2; SUBB A,#5 -> A=0xFD, CY=1
+            cpu.step(); // MOV A, #2
+            cpu.step(); // SUBB A, #5 -> 2 - 5 = -3 -> 0xFD, CY=true, OV=false
+            check("TC-18", "SUBB A, #0x05 (A=0x02) → A=0xFD, CY=1, OV=0",
+                    "FD|CY=true|OV=false",
+                    String.format("%02X|CY=%b|OV=%b", cpu.regs.A, cpu.psw.isCy(), cpu.psw.isOv()));
+        }
+
+        // ── TC19: Conditional Jumps JZ (0x60) & JNZ (0x70) ─────────────────
+        {
+            // MOV A,#1; JNZ +1 (skips INC A); MOV A,#0; JZ +1 (skips INC A); HALT
+            CPU cpu = newCPU(new byte[]{
+                0x74, 0x01,        // MOV A, #1
+                0x70, 0x01,        // JNZ +1 (taken -> skips 0x04)
+                0x04,              // INC A (skipped)
+                0x74, 0x00,        // MOV A, #0
+                0x60, 0x01,        // JZ +1 (taken -> skips 0x04)
+                0x04,              // INC A (skipped)
+                (byte)0xFF         // HALT
+            });
+            while (!cpu.isHalt) cpu.step();
+            check("TC-19", "Conditional JNZ & JZ skip INC → A=0x00",
+                    "00|true", String.format("%02X|%b", cpu.regs.A, cpu.isHalt));
+        }
+
+        // ── TC20: Circular FIFO 20-Item Wrap-Around Past Slot 16 ───────────
+        {
+            DataStructures ds = new DataStructures(256, 16);
+            for (int i = 1; i <= 16; i++) ds.enqueue(i); // Fill all 16 slots (1..16)
+            boolean fullAt16 = ds.isQueueFull();
+            int d1 = ds.dequeue(); // 1
+            int d2 = ds.dequeue(); // 2
+            int d3 = ds.dequeue(); // 3
+            int d4 = ds.dequeue(); // 4
+            // Enqueue 4 more items (17..20) causing rear pointer wrap-around (0..3)
+            for (int i = 17; i <= 20; i++) ds.enqueue(i);
+            int last = 0;
+            int count = 0;
+            while (!ds.isQueueEmpty()) {
+                last = ds.dequeue();
+                count++;
+            }
+            check("TC-20", "Circular FIFO 20-item wrap-around past slot 16",
+                    "full=true|first=1,4|count=16|last=20",
+                    String.format("full=%b|first=%d,%d|count=%d|last=%d", fullAt16, d1, d4, count, last));
+        }
+
         // ── Summary ────────────────────────────────────────────────────────
         System.out.println("=".repeat(100));
         System.out.printf("Results: %d PASSED, %d FAILED out of %d tests%n",

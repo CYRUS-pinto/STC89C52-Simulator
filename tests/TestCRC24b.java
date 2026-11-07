@@ -84,6 +84,30 @@ public class TestCRC24b {
                 crcEmpty, pass8 ? "PASS" : "FAIL");
         if (pass8) passed++;
 
+        // Test 9: Exhaustive 96-Bit Single-Bit & 4,560 Two-Bit Error Detection on 12-Byte Codeword
+        total++;
+        int totalBits = codeword.length * 8; // 96 bits
+        int detected1Bit = 0;
+        for (int b = 0; b < totalBits; b++) {
+            byte[] c1 = codeword.clone();
+            c1[b / 8] ^= (byte) (1 << (b % 8));
+            if (CRC24b.decode(c1) != 0) detected1Bit++;
+        }
+        int detected2Bit = 0;
+        int total2BitPairs = (totalBits * (totalBits - 1)) / 2; // 4,560 pairs
+        for (int b1 = 0; b1 < totalBits; b1++) {
+            for (int b2 = b1 + 1; b2 < totalBits; b2++) {
+                byte[] c2 = codeword.clone();
+                c2[b1 / 8] ^= (byte) (1 << (b1 % 8));
+                c2[b2 / 8] ^= (byte) (1 << (b2 % 8));
+                if (CRC24b.decode(c2) != 0) detected2Bit++;
+            }
+        }
+        boolean pass9 = (detected1Bit == totalBits) && (detected2Bit == total2BitPairs);
+        System.out.printf("[TC-09] Exhaustive 96-Bit Error Sweep: 1-Bit=%d/%d (100%%), 2-Bit=%d/%d (100%%) -> %s\n",
+                detected1Bit, totalBits, detected2Bit, total2BitPairs, pass9 ? "PASS" : "FAIL");
+        if (pass9) passed++;
+
         System.out.println("==================================================================");
         System.out.printf("Results: %d PASSED, %d FAILED out of %d tests\n", passed, (total - passed), total);
         if (passed == total) {
