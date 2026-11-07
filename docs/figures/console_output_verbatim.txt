@@ -1,0 +1,34 @@
+$ java -cp bin TestCPU
+TC-ID    | Instruction                    | Expected             | Actual               | Result
+TC-01    | MOV A, #0x42 -> A should be 0x42 | 42                   | 42                   | PASS
+TC-02    | MOV A, #0x00 -> A should be 0x00 | 00                   | 00                   | PASS
+TC-03    | ADD A, #0x05 (A was 0x10) -> A=0x15, CY=0 | 15|CY=false          | 15|CY=false          | PASS
+TC-04    | ADD A, #3 (A=0xFE=254) -> A=0x01, CY=1 | 01|CY=true           | 01|CY=true           | PASS
+TC-05    | INC A (A was 0x07) -> A should be 0x08 | 08                   | 08                   | PASS
+TC-06    | INC A (A=0xFF) -> A should wrap to 0x00 | 00                   | 00                   | PASS
+TC-07    | ANL A, #0x0F (A=0xAB) -> A should be 0x0B | 0B                   | 0B                   | PASS
+TC-08    | SJMP rel +1 skips INC -> A should remain 0x00 | 00                   | 00                   | PASS
+TC-09    | ENQUEUE A (A=0x55) -> queue size should be 1 | 1                    | 1                    | PASS
+TC-10    | DEQUEUE into A -> A should be 0x33 (FIFO order) | 33                   | 33                   | PASS
+TC-11    | HALT -> cpu.isHalt should be true | true                 | true                 | PASS
+TC-12    | Full demo: DEQUEUE -> A=0x02 (FIFO first-in) | 02                   | 02                   | PASS
+TC-13    | Full demo: Q_SIZE=1 after one dequeue | 1                    | 1                    | PASS
+TC-14    | Full demo: CY=1 after overflow ADD | true                 | true                 | PASS
+Results: 14 PASSED, 0 FAILED out of 14 tests
+ALL TESTS PASSED
+
+$ java -cp bin TestCRC24b
+[TC-01] Vector '123456789' -> Expected: 0x23EF52 | Actual: 0x23EF52 -> PASS
+[TC-02] Single Byte 'A' -> Checksum: 0x0010C2 -> PASS
+[TC-03] 8051 Register Decomposition: R5=0x23, R6=0xEF, R7=0x52 -> PASS
+[TC-04] Hardware Carry-Propagation Simulation -> 0x23EF52 (Matches Canon: true) -> PASS
+[TC-05] Codeword Encoding & Decoding -> Syndrome: 0x000000 (Valid Packet: true) -> PASS
+[TC-06] 1-Bit Noise Injection -> Syndrome: 0x520000 (Error Detected: true) -> PASS
+[TC-07] 2-Bit Burst Noise Injection -> Syndrome: 0xF60000 (Burst Detected: true) -> PASS
+[TC-08] Empty Payload Checksum: 0x000000 -> PASS
+Results: 8 PASSED, 0 FAILED out of 8 tests
+ALL CRC-24b TESTS PASSED SUCCESSFULLY! (100%)
+
+$ java -cp bin QueueTest
+Queue empty after all dequeues: true
+3/3 dequeue operations verified FIFO order.
