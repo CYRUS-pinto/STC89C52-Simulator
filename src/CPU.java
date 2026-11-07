@@ -222,7 +222,13 @@ public class CPU {
                 int offset = fetchOper();
                 if (offset > 127) offset -= 256;
                 pc += offset;
-                statechangelog = "PC : " + toHex(pc, 4);
+                if (offset == -2) {
+                    // Standard 8051 idiom SJMP $ (80 FE) self-loop halt
+                    isHalt = true;
+                    statechangelog = "PC : " + toHex(pc, 4) + " (SJMP $ Halted)";
+                } else {
+                    statechangelog = "PC : " + toHex(pc, 4);
+                }
                 break;
             }
 

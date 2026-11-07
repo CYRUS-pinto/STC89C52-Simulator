@@ -7,7 +7,7 @@ import java.util.List;
 
 /**
  * LoggerProcessTest — Automated Unit & Integration Test Suite for LoggerProcess
- * Author: Arnold Noah(25190164) — Logging & Audit Subsystem
+ * Author: Arnold Noah Karyappa (25190106) — Logging & Audit Subsystem
  *
  * Course Rubric Fulfillment:
  * - Testing & Debugging: Systematic unit tests with automated verification (5 marks)
@@ -22,11 +22,11 @@ public class LoggerProcessTest {
     public static void main(String[] args) {
         System.out.println("==================================================================");
         System.out.println("  STC89C52 SIMULATOR: LOGGER PROCESS TEST SUITE (PORT 5001)");
-        System.out.println("  Author: Arnold Noronha (25190104) — Logging & Audit Subsystem");
+        System.out.println("  Author: Arnold Noah Karyappa (25190106) — Logging & Audit Subsystem");
         System.out.println("==================================================================");
 
         int passed = 0;
-        int total = 5;
+        int total = 6;
 
         // Test 1: Connect to LoggerProcess Socket
         try (Socket socket = new Socket(HOST, PORT);
@@ -64,6 +64,21 @@ public class LoggerProcessTest {
                 }
             } else {
                 System.out.println("[TC-05] simulator.log file not found: FAIL");
+            }
+
+            // Test 6: Non-Blocking Bounded Queue Backpressure Fault-Isolation Check
+            long t0 = System.nanoTime();
+            for (int i = 0; i < 1500; i++) {
+                CoreProcess.offerLogFrame("EXEC", "CPU", "FAULT_ISOLATION_BURST_" + i);
+            }
+            double burstMs = (System.nanoTime() - t0) / 1_000_000.0;
+            long dropped = CoreProcess.getDroppedLogsCount();
+            if (burstMs < 50.0 && dropped > 0) {
+                System.out.printf("[TC-06] Non-Blocking Backpressure (1,500 burst in %.2f ms, %d overflow drops): OK [PASS]%n",
+                        burstMs, dropped);
+                passed++;
+            } else {
+                System.out.printf("[TC-06] Backpressure check failed (burstMs=%.2f, dropped=%d): FAIL%n", burstMs, dropped);
             }
 
         } catch (Exception e) {

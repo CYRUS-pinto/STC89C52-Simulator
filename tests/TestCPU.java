@@ -180,6 +180,37 @@ public class TestCPU {
                     "true", String.valueOf(cpu.psw.isCy()));
         }
 
+        // ── TC15: PUSH direct (0xC0) & Stack SP increment ──────────────────
+        {
+            CPU cpu = newCPU(new byte[]{0x74, 0x3C, (byte)0xC0, (byte)0xE0, (byte)0xFF}); // MOV A,#0x3C; PUSH ACC; HALT
+            cpu.step(); // MOV A, #0x3C
+            cpu.step(); // PUSH ACC -> SP increments 07H -> 08H, RAM[08H] = 0x3C
+            check("TC-15", "PUSH ACC (0x3C) → SP=0x08, TOS=0x3C",
+                    "08|3C", String.format("%02X|%02X", cpu.ds.sp, cpu.mem.readRAM(0x08)));
+        }
+
+        // ── TC16: MUL AB (6*7=42) & DIV AB (B=0 sets OV=1 safely) ──────────
+        {
+            CPU cpu = newCPU(new byte[]{0x74, 0x06, 0x75, (byte)0xF0, 0x07, (byte)0xA4, 0x75, (byte)0xF0, 0x00, (byte)0x84, (byte)0xFF});
+            cpu.step(); // MOV A, #6
+            cpu.step(); // MOV B, #7
+            cpu.step(); // MUL AB -> A=0x2A, B=0x00, OV=false
+            String mulState = String.format("%02X|OV=%b", cpu.regs.A, cpu.psw.isOv());
+            cpu.step(); // MOV B, #0
+            cpu.step(); // DIV AB (B=0) -> OV=true without exception
+            check("TC-16", "MUL AB (6*7=0x2A) & DIV AB (B=0 sets OV=1)",
+                    "2A|OV=false|DIV0_OV=true", mulState + "|DIV0_OV=" + cpu.psw.isOv());
+        }
+
+        // ── TC17: Standard 8051 SJMP $ (80 FE) self-loop halt detection ────
+        {
+            CPU cpu = newCPU(new byte[]{0x74, 0x05, (byte)0x80, (byte)0xFE}); // MOV A,#5; SJMP $ (offset -2)
+            cpu.step(); // MOV A, #5 (PC=0002)
+            cpu.step(); // SJMP -2 -> PC stays 0002, cpu.isHalt=true
+            check("TC-17", "SJMP $ (80 FE) → PC=0002, isHalt=true",
+                    "0002|true", String.format("%04X|%b", cpu.pc, cpu.isHalt));
+        }
+
         // ── Summary ────────────────────────────────────────────────────────
         System.out.println("=".repeat(100));
         System.out.printf("Results: %d PASSED, %d FAILED out of %d tests%n",

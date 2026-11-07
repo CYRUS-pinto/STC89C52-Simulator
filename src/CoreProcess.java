@@ -26,7 +26,11 @@ public class CoreProcess {
     private static CPU cpu;
     private static byte[] currentProgram;
 
+    private static Socket loggerSocket = null;
     private static PrintWriter loggerWriter = null;
+    private static final ArrayBlockingQueue<String> logQueue = new ArrayBlockingQueue<>(1024);
+    private static final java.util.concurrent.atomic.AtomicLong droppedLogs = new java.util.concurrent.atomic.AtomicLong(0);
+    private static volatile boolean loggerRunning = true;
     private static final Object cpuLock = new Object();
     private static volatile boolean serverRunning = true;
     private static ServerSocket serverSocket;
@@ -102,29 +106,63 @@ public class CoreProcess {
     private static void connectLogger() {
         try {
             System.out.println("[Core] Connecting to LoggerProcess on " + LOGGER_HOST + ":" + LOGGER_PORT + "...");
-            Socket socket = new Socket(LOGGER_HOST, LOGGER_PORT);
-            loggerWriter = new PrintWriter(new BufferedWriter(new OutputStreamWriter(socket.getOutputStream())), true);
+            loggerSocket = new Socket(LOGGER_HOST, LOGGER_PORT);
+            loggerWriter = new PrintWriter(new BufferedWriter(new OutputStreamWriter(loggerSocket.getOutputStream())), true);
             System.out.println("[Core] Connected to LoggerProcess successfully.");
         } catch (IOException e) {
             System.out.println("[Core] Notice: LoggerProcess not detected on port " + LOGGER_PORT +
                     " (start LoggerProcess first). Continuing with console fallback.");
         }
+
+        Thread dispatcher = new Thread(() -> {
+            while (loggerRunning || !logQueue.isEmpty()) {
+                try {
+                    String frame = logQueue.poll(50, TimeUnit.MILLISECONDS);
+                    if (frame != null && loggerWriter != null) {
+                        loggerWriter.println(frame);
+                    }
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    break;
+                } catch (Exception ignored) {}
+            }
+        }, "Core-AsyncLoggerDispatcher");
+        dispatcher.setDaemon(true);
+        dispatcher.start();
+    }
+
+    public static boolean offerLogFrame(String level, String cat, String msg) {
+        String frame = "LOG|" + level + "|" + cat + "|" + msg;
+        boolean accepted = logQueue.offer(frame);
+        if (!accepted) {
+            droppedLogs.incrementAndGet();
+        }
+        return accepted;
+    }
+
+    public static long getDroppedLogsCount() {
+        return droppedLogs.get();
     }
 
     private static synchronized void log(String level, String cat, String msg) {
         System.out.println("[Core:" + level + "] " + msg);
-        if (loggerWriter != null) {
-            loggerWriter.println("LOG|" + level + "|" + cat + "|" + msg);
-        }
+        offerLogFrame(level, cat, msg);
     }
 
     private static synchronized void closeLogger() {
+        loggerRunning = false;
         if (loggerWriter != null) {
             try {
-                loggerWriter.println("LOG|SHUTDOWN|CORE|CoreProcess closing logger connection.");
+                logQueue.offer("LOG|SHUTDOWN|CORE|CoreProcess closing logger connection.");
+                long deadline = System.currentTimeMillis() + 100;
+                while (!logQueue.isEmpty() && System.currentTimeMillis() < deadline) {
+                    Thread.sleep(5);
+                }
                 loggerWriter.close();
+                if (loggerSocket != null) loggerSocket.close();
             } catch (Exception ignored) {}
             loggerWriter = null;
+            loggerSocket = null;
         }
     }
 
@@ -215,12 +253,17 @@ public class CoreProcess {
                     } else if (verb.equals("CRC")) {
                         synchronized (cpuLock) {
                             String dataStr = payload.isEmpty() ? "123456789" : payload;
-                            int crcVal = CRC24b.calculateString(dataStr);
-                            int[] r = CRC24b.to8051Registers(crcVal);
+                            byte[] rawBytes = dataStr.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                            int[] r = new int[]{ 0, 0, 0 };
+                            for (byte b : rawBytes) {
+                                CRC24b.step8051Hardware(r, b);
+                            }
+                            int crcVal = CRC24b.from8051Registers(r[0], r[1], r[2]);
                             regs.setR(5, 0, r[0]);
                             regs.setR(6, 0, r[1]);
                             regs.setR(7, 0, r[2]);
                             regs.A = r[2];
+                            psw.updateParity(regs.A);
                             log("INFO", "CRC", "Calculated CRC-24b for '" + dataStr + "': 0x" + String.format("%06X", crcVal) + " (R5=0x" + String.format("%02X", r[0]) + ", R6=0x" + String.format("%02X", r[1]) + ", R7=0x" + String.format("%02X", r[2]) + ")");
                             emitState(toUI);
                             toUI.println(String.format("CRC|CHECKSUM=0x%06X|R5=%02X|R6=%02X|R7=%02X", crcVal, r[0], r[1], r[2]));
@@ -229,12 +272,16 @@ public class CoreProcess {
                         synchronized (cpuLock) {
                             String dataStr = payload.isEmpty() ? "123456789" : payload;
                             byte[] rawBytes = dataStr.getBytes(java.nio.charset.StandardCharsets.UTF_8);
-                            int crcVal = CRC24b.calculate(rawBytes);
-                            int[] r = CRC24b.to8051Registers(crcVal);
+                            int[] r = new int[]{ 0, 0, 0 };
+                            for (byte b : rawBytes) {
+                                CRC24b.step8051Hardware(r, b);
+                            }
+                            int crcVal = CRC24b.from8051Registers(r[0], r[1], r[2]);
                             regs.setR(5, 0, r[0]);
                             regs.setR(6, 0, r[1]);
                             regs.setR(7, 0, r[2]);
                             regs.A = r[2];
+                            psw.updateParity(regs.A);
 
                             byte[] codeword = CRC24b.encode(rawBytes);
                             int cleanSyn = CRC24b.decode(codeword);
