@@ -22,7 +22,7 @@ Week 4 separated the single-process simulator into **three independent processes
 
 ## IPC Mechanism: TCP Sockets
 
-**Selected mechanism:** TCP Sockets (POSIX-compatible, cross-platform)
+**Selected mechanism:** TCP Loopback Sockets (`java.net.ServerSocket` / `java.net.Socket`, cross-platform)
 
 **Justification:**
 - Simple, reliable, ordered byte stream — no message loss, no reordering.
@@ -106,12 +106,12 @@ The standard 11-instruction demo program (see CoreProcess, Week 2 demo).
 
 ### Results
 
-| Metric | Standalone (Single JVM) | Multi-Process (TCP Socket IPC :5000) |
+| Metric | Standalone (Single JVM, 100k ops) | Multi-Process (TCP Loopback IPC :5000, 200 RTT) |
 |--------|-------------------------|--------------------------------------|
-| 1,000 CRC Packets Time | 0.29 ms | 666.00 ms |
-| Throughput | 3,471,017 packets/sec | 1,503 messages/sec |
-| Per-item Latency | 0.0003 ms (0.3 µs) | 0.6660 ms (666 µs) |
-| Process Fault Isolation | None (UI crash kills CPU Core) | 100% Protected (Independent PIDs) |
+| Total Elapsed Time | 28.92 ms (100,000 packets) | 306.92 ms (200 round-trips) |
+| Throughput | 3,457,229 packets/sec | ~652 messages/sec |
+| Per-item Latency | 0.0003 ms (0.3 µs) | mean = 1.535 ms (min 0.311 ms, p50 0.914 ms, p99 10.788 ms) |
+| Process Fault Isolation | None (UI crash kills CPU Core) | Protected (Independent OS Processes + 1,024-slot non-blocking log queue) |
 | Memory Protection | Shared heap (vulnerable) | Independent memory address spaces |
 
 ### Analysis
@@ -133,7 +133,7 @@ The standard 11-instruction demo program (see CoreProcess, Week 2 demo).
 - [x] Performance analysis & architectural trade-off evaluation
 - [x] Week 4 Allocated Algorithm: CRC-24b 3GPP LTE (`src/CRC24b.java`)
 - [x] 8-Bit Hardware Register Slicing (R5=High, R6=Mid, R7=Low, A=Low)
-- [x] CRC-24b Unit Verification Test Suite (`tests/TestCRC24b.java`, 6/6 PASS)
+- [x] CRC-24b Unit Verification Test Suite (`tests/TestCRC24b.java`, 9/9 PASS including 4,656-case exhaustive 1-bit & 2-bit sweep)
 - [x] UI Preset 5 Integration (`[ Preset 5: CRC-24b LTE-B ]`)
 - [x] Final Project Report (`docs/PBL_Report.pdf` and `docs/PBL_Report.docx`)
 - [x] Updated GitHub documentation

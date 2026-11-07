@@ -11,7 +11,7 @@ This document records the team's architectural planning, technical discussions, 
 | Register No | Member Name | Assigned Subsystem & Role |
 | :---: | --- | --- |
 | **25190111** | **Cyrus Shobith Pinto** | **Team Leader:** Multi-process architecture, TCP socket IPC orchestration, 3GPP LTE CRC-24b implementation, benchmarking, and integration |
-| **25190110** | **Chrisel Lobo** | **Core Process Lead:** 17-opcode 8051 Fetch-Decode-Execute engine, 8 KB ROM / 256B RAM model, PSW flags, stack/queue integration, and documentation |
+| **25190110** | **Chrisel Lobo** | **Core Process Lead:** 19-opcode 8051 Fetch-Decode-Execute engine, 8 KB ROM / 256B RAM model, PSW flags, stack/queue integration, and documentation |
 | **25190106** | **Arnold Noah Karyappa** | **Logging Subsystem Lead:** Independent TCP logging daemon (`Port 5001`), thread-safe `LogHandler` persistence (`simulator.log`), and logger verification tests |
 | **25190148** | **Shashidhara Poojari** | **UI Subsystem Lead:** Embedded HTTP server (`Port 8080`), 7-panel Web Dashboard (`index.html`), Swing desktop client (`SimulatorUI.java`), and preset loader |
 
@@ -19,7 +19,7 @@ This document records the team's architectural planning, technical discussions, 
 
 ## 2. Project Overview
 
-The project is an educational, instruction-accurate software simulator for a 17-opcode subset of the STC89C52 (Intel MCS-51 family) 8-bit microcontroller. It integrates computer architecture (Fetch-Decode-Execute pipeline, register banks, PSW status flags, internal RAM), data structures (hardware stack and 16-slot circular FIFO queue), operating systems concepts (multi-process fault isolation, bounded non-blocking producer-consumer queues, thread synchronization), and computer networking (TCP loopback IPC and 3GPP TS 36.212 CRC-24b error detection).
+The project is an educational, instruction-accurate software simulator for a 19-opcode subset of the STC89C52 (Intel MCS-51 family) 8-bit microcontroller. It integrates computer architecture (Fetch-Decode-Execute pipeline, register banks, PSW status flags, internal RAM), data structures (hardware stack and 16-slot circular FIFO queue), operating systems concepts (multi-process fault isolation, bounded non-blocking producer-consumer queues, thread synchronization), and computer networking (TCP loopback IPC and 3GPP TS 36.212 CRC-24b error detection).
 
 ---
 
@@ -57,7 +57,7 @@ The project is an educational, instruction-accurate software simulator for a 17-
 
 ### Technical Implementation
 - **Unsigned 8-Bit Arithmetic in Java:** Because Java's primitive `byte` is signed (`-128` to `127`), all register and RAM reads/writes apply an explicit bitwise mask (`& 0xFF`) to prevent 32-bit sign-extension from corrupting `ADD`/`SUBB` carry (`CY`) and overflow (`OV`) calculations.
-- **Fetch-Decode-Execute Engine (`CPU.java`):** Implemented a 17-opcode instruction subset (`NOP`, `MOV A,#data`, `MOV direct,#data`, `ADD A,#data`, `SUBB A,#data`, `MUL AB`, `DIV AB`, `INC A`, `DEC A`, `ANL A,#data`, `ORL A,#data`, `XRL A,#data`, `SJMP rel`, `PUSH direct`, `ENQUEUE A`, `DEQUEUE A`, `HALT`), supporting both synthetic `0xFF` halting and standard 8051 `SJMP $` (`80 FE`) self-loop halting.
+- **Fetch-Decode-Execute Engine (`CPU.java`):** Implemented a 19-opcode instruction subset (`NOP`, `MOV A,#data`, `MOV direct,#data`, `ADD A,#data`, `SUBB A,#data`, `MUL AB`, `DIV AB`, `INC A`, `DEC A`, `ANL A,#data`, `ORL A,#data`, `XRL A,#data`, `JZ rel`, `JNZ rel`, `SJMP rel`, `PUSH direct`, `ENQUEUE A`, `DEQUEUE A`, `HALT`), supporting both synthetic `0xFF` halting and standard 8051 `SJMP $` (`80 FE`) self-loop halting.
 - **Hardware Stack & Circular Queue (`DataStructures.java`):** Implemented the 8051 stack pointer (`SP` initialized to `0x07`, pre-increment on `PUSH`, post-decrement on `POP` with underflow protection at `0x07`) alongside a 16-slot circular FIFO buffer (`(rear + 1) % 16`) validated by `programs/QueueTest.java`.
 
 ---
@@ -101,13 +101,13 @@ The simulator was decoupled into three operating system processes communicating 
 - `CRC24b.step8051Hardware()` models the 8-bit register constraint by shifting bit-by-bit through the carry bit across `R7 -> R6 -> R5` and XORing `0x80`, `0x00`, and `0x63` when the MSB shifted out of `R5` is `1`.
 - Verified standard test vector `"123456789"` $\rightarrow$ remainder `0x23EF52` (`R5=0x23`, `R6=0xEF`, `R7=0x52`), clean codeword syndrome `0x000000`, 1-bit error syndrome `0x520000` (byte 0, bit 0), and 2-bit adjacent burst syndrome `0xF60000` (byte 0, bits 0 & 1).
 
-### 2. Automated Verification Summary (34/34 Passing Assertions)
-- **`TestCPU.java`:** **17/17 PASS** (Data Transfer `MOV`, Arithmetic `ADD`/`INC`/`MUL`/`DIV`, Logic `ANL`, Control Flow `SJMP +1` and `SJMP $` [`80 FE`], Stack `PUSH ACC`, Queue `ENQUEUE`/`DEQUEUE`, and `HALT`).
-- **`TestCRC24b.java`:** **8/8 PASS** (3GPP vector `"123456789"`, single-byte `"A"`, `R5:R6:R7` decomposition, `step8051Hardware()` equivalence, codeword encoding/decoding, 1-bit error, 2-bit burst error, empty payload).
+### 2. Automated Verification Summary (38/38 Passing Assertions)
+- **`TestCPU.java`:** **20/20 PASS** (Data Transfer `MOV`, Arithmetic `ADD`/`SUBB`/`INC`/`MUL`/`DIV`, Logic `ANL`, Control Flow `SJMP +1`, `JZ`/`JNZ` conditional loops, and `SJMP $` [`80 FE`], Stack `PUSH ACC`, 20-item circular FIFO wrap-around past slot 16, and `HALT`).
+- **`TestCRC24b.java`:** **9/9 PASS** (3GPP vector `"123456789"`, single-byte `"A"`, `R5:R6:R7` decomposition, `step8051Hardware()` equivalence, codeword encoding/decoding, 1-bit error, 2-bit burst error, empty payload, and exhaustive 96-bit codeword sweep detecting 96/96 single-bit and 4,560/4,560 double-bit errors).
 - **`QueueTest.java`:** **3/3 PASS** (Assembly-level FIFO enqueue/dequeue ordering verification for `10, 30, 5`).
-- **`LoggerProcessTest.java`:** **6/6 PASS** (Socket connection on Port 5001, `EXEC` log, `CRC` log, malformed frame handling, disk persistence in `simulator.log`, and `1,500`-frame non-blocking backpressure burst test completing in `11.30 ms`).
+- **`LoggerProcessTest.java`:** **6/6 PASS** (Socket connection on Port 5001, `EXEC` log, `CRC` log, malformed frame handling, disk persistence in `simulator.log`, and `CountDownLatch` fault-isolation test verifying `CPU.java` executes Preset 1 `6×7=42` to `HALT` while the consumer is blocked and 480 excess frames are dropped).
 
 ### 3. Benchmark Results (`programs/BenchmarkCRC.java`)
-- **Environment:** Windows 11 x64, OpenJDK 26.0.2, 200-iteration JIT warm-up, 49-byte telecom payload.
-- **Standalone In-Memory Baseline (1,000 iterations):** `~1.0 ms` total (`0.001 ms/pkt`, checksum `0x025A3C`).
-- **Multi-Process TCP Loopback IPC (100 stop-and-wait round trips on Port 5000):** `66.6 ms` total (`0.666 ms/msg` average RTT, `~1,500 msgs/sec`), demonstrating sub-millisecond interactive latency alongside complete OS process isolation.
+- **Environment:** Windows 11 x64, OpenJDK 26.0.2, 10,000-iteration C2 JIT warm-up, 49-byte telecom payload.
+- **Standalone In-Memory Baseline (100,000 iterations):** `28.92 ms` total (`0.0003 ms/pkt`, `~3.46M pkts/sec`, checksum `0x025A3C`).
+- **Multi-Process TCP Loopback IPC (200 stop-and-wait round trips on Port 5000):** `306.92 ms` total (`mean = 1.535 ms`, `min = 0.311 ms`, `median p50 = 0.914 ms`, `p99 = 10.788 ms`, `~652 msgs/sec`), demonstrating sub-millisecond median interactive latency alongside complete OS process isolation.

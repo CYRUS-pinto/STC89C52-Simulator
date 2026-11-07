@@ -128,31 +128,31 @@ Located below the 6 panels:
 
 All unit tests and validation programs run without requiring external dependencies:
 
-### Test Suite 1: 8051 CPU Opcode Unit Tests (17 Tests)
+### Test Suite 1: 8051 CPU Opcode Unit Tests (20 Tests)
 ```powershell
 java -cp bin TestCPU
 ```
 *Expected Output:*
 ```
-Results: 17 PASSED, 0 FAILED out of 17 tests
+Results: 20 PASSED, 0 FAILED out of 20 tests
 ALL TESTS PASSED ✓
 ```
 
 ---
 
-### Test Suite 2: CRC-24b Algorithm & Register Mapping Tests (8 Tests)
+### Test Suite 2: CRC-24b Algorithm, Register Mapping & Exhaustive Sweep Tests (9 Tests)
 ```powershell
 java -cp bin TestCRC24b
 ```
 *Expected Output:*
 ```
-Results: 8 PASSED, 0 FAILED out of 8 tests
+Results: 9 PASSED, 0 FAILED out of 9 tests
 ALL CRC-24b TESTS PASSED SUCCESSFULLY! (100%)
 ```
 
 ---
 
-### Test Suite 3: Circular FIFO Buffer Validation
+### Test Suite 3: Circular FIFO Buffer Validation (3 Tests)
 ```powershell
 java -cp bin QueueTest
 ```
@@ -164,13 +164,26 @@ Queue validation PASSED ✓ — FIFO ordering correct.
 
 ---
 
-### Test Suite 4: Empirical Benchmark & IPC Latency Audit
+### Test Suite 4: Logger Socket & CountDownLatch Fault-Isolation Tests (6 Tests)
+```powershell
+java -cp bin LoggerProcessTest
+```
+*Expected Output:*
+```
+Results: 6 PASSED, 0 FAILED out of 6 tests
+ALL LOGGER TESTS PASSED ✓
+```
+
+---
+
+### Test Suite 5: Empirical Benchmark & IPC Latency Audit
 ```powershell
 java -cp bin BenchmarkCRC
 ```
 *Expected Output:*
-- Measures standalone in-memory throughput (~1,000,000 pkts/sec at 0.001 ms/pkt).
-- Measures multi-process POSIX socket IPC throughput (~1,500 msgs/sec at ~0.66 ms round-trip).
+- Performs 10,000 C2 JIT warm-up iterations on a 49-byte telecom payload.
+- Measures standalone in-memory throughput across 100,000 iterations (~3.46M pkts/sec at 0.0003 ms/pkt).
+- Measures multi-process TCP loopback socket IPC latency across 200 round-trips (mean = 1.535 ms, min = 0.311 ms, median p50 = 0.914 ms, p99 = 10.788 ms).
 - Outputs the **Architectural Tradeoff Table** (Throughput vs. Process Fault Isolation).
 
 ---
@@ -241,15 +254,15 @@ STC89C52-Simulator/
 │   ├── SimulatorUI.java                      ← Swing Desktop GUI Client
 │   └── index.html                            ← Source copy of Web Dashboard
 ├── tests/
-│   ├── TestCPU.java                          ← 17 CPU Opcode verification tests
-│   ├── TestCRC24b.java                       ← 8 CRC-24b telecom verification tests
-│   └── LoggerProcessTest.java                ← 6 socket & backpressure logger tests
+│   ├── TestCPU.java                          ← 20 CPU Opcode & FIFO wrap-around tests
+│   ├── TestCRC24b.java                       ← 9 CRC-24b & 4,656-case exhaustive sweep tests
+│   └── LoggerProcessTest.java                ← 6 socket & CountDownLatch fault-isolation tests
 ├── programs/
-│   ├── QueueTest.java                        ← Circular FIFO ordering verification
-│   └── BenchmarkCRC.java                     ← Standalone vs Multi-Process benchmark
+│   ├── QueueTest.java                        ← Circular FIFO ordering verification (3 tests)
+│   └── BenchmarkCRC.java                     ← Standalone (100k) vs Multi-Process (200 RTT) benchmark
 ├── docs/
-│   ├── PBL_Report.pdf                        ← Final 9-Page Project Report (PDF)
-│   ├── PBL_Report.docx                       ← Final 9-Page Project Report (DOCX)
+│   ├── PBL_Report.pdf                        ← Final Project Report (PDF)
+│   ├── PBL_Report.docx                       ← Final Project Report (DOCX)
 │   ├── decisions/                            ← Architecture decision log
 │   ├── meetings/                             ← Meeting minutes (Meetings 1–5)
 │   └── weekly-status/                        ← Week 1 - Week 4 progress trackers

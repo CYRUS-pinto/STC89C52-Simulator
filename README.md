@@ -1,6 +1,20 @@
 # STC89C52 Microcontroller Simulator
 
-## Problem Objective
+## Final System Overview (Weeks 1–5 Completed Architecture)
+An educational, instruction-accurate **three-process software simulator** for a **19-opcode subset of the STC89C52 (Intel MCS-51) 8-bit microcontroller**, featuring decoupled TCP loopback inter-process communication (`Ports 5000, 5001, 8080`), a bounded non-blocking `ArrayBlockingQueue(1024)` log buffer, an interactive 7-panel Web Dashboard, and a **3GPP TS 36.212 CRC-24b (`g(D) = 0x800063`) telecommunications error-detection lab** operating on simulated 8-bit registers `R5`, `R6`, and `R7`.
+
+- **Three Independent OS Processes (`src/`):**
+  - **`LoggerProcess` (`Port 5001` — Arnold Noah Karyappa, `25190106`):** Append-only TCP logging daemon persisting execution traces to `simulator.log` via thread-safe `synchronized LogHandler.writeLog()`.
+  - **`CoreProcess` (`Port 5000` — Chrisel Lobo, `25190110`):** 19-opcode Fetch-Decode-Execute CPU engine (`CPU.java`), 8 KB Code ROM, 256-byte Internal RAM (`Memory.java`), 4 Register Banks (`R0`–`R7`), `PSW` status flags (`CY, AC, OV, P`), hardware LIFO Stack (`SP=07H` reset), 16-slot circular FIFO ring buffer (`DataStructures.java`), and non-blocking log queue (`ArrayBlockingQueue(1024)`).
+  - **`UIProcess` (`Port 8080` — Shashidhara Poojari, `25190148`):** Embedded HTTP server serving the 7-panel Web Dashboard (`index.html`), `/api/cmd` REST-style control bridge, and `SimulatorUI.java` Swing desktop client.
+  - **System Architecture, Socket IPC, CRC-24b Engine & Benchmarking (`Cyrus Shobith Pinto` — Team Lead, `25190111`):** Multi-process socket orchestration, `CRC24b.step8051Hardware()` across `R5:R6:R7`, `BenchmarkCRC.java`, and full-system integration.
+- **Automated Verification (`38/38` Passing Assertions):**
+  - `TestCPU.java` (`20/20 PASS`), `TestCRC24b.java` (`9/9 PASS`, including exhaustive 96-bit 1-bit & 2-bit codeword sweep across 4,656 error patterns), `QueueTest.java` (`3/3 PASS`), and `LoggerProcessTest.java` (`6/6 PASS`, including `CountDownLatch` stalled-logger CPU step fault-isolation verification).
+- **Quick Start & Full Documentation:** See [`HOWTORUN.md`](HOWTORUN.md) and [`docs/PBL_Report.pdf`](docs/PBL_Report.pdf).
+
+---
+
+## Initial Week 1 Problem Objective & Planning Archive
 Develop a STC89C52 microcontroller simulator for instruction execution memory and peripheral operations and process management.This will help the student visualize the program and understand helping users visualize how programs execute and how CPU scheduling manages multiple programs.
 
 ## Problem Statement
