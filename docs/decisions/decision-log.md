@@ -1,81 +1,55 @@
-# Decision Log
+# Architecture & Project Decision Log
 
-## Decision 000 - Team Formation
-Date: Prior to 22 August 2026
-Status: Closed
+## Decision 001 - Programming Language Selection
+**Date:** 22 August 2026  
+**Status:** Closed  
 
-**Context:** While forming the team, some students available were strong coders. 
-The team leader (Cyrus) deliberately did not select them, on the assessment that mixing strong and less-experienced coders on one team risked ego conflicts that could hurt team cohesion. The current team (Cyrus, Arnold, Shashidhara, Chrisel) was formed instead, with the expectation that responsibilities would need to be actively guided rather than assumed.
-
-**Decision:** Proceed with the current team composition, and compensate for the mixed experience level with a structured task-division method (see Decision 002) rather than relying on self-organization.
-
-**Reason:** Prioritizing team cohesion and manageable collaboration over raw coding strength, given the mismatch would have to be managed for the full project duration.
-
-**Effect on project:** The team leader takes a more active guiding/coordinating role than a typical hands-off team lead - breaking work into small, scored tasks (see Decision 002) rather than assigning large open-ended modules. 
+**Options considered:** Standard Java (JDK) vs. C/C++ or Python.  
+**Decision:** Standard Java selected.  
+**Reason:** Java provides clean object-oriented encapsulation for modeling microcontroller hardware components (`CPU`, `Registers`, `Memory`, `PSW`, `DataStructures`), cross-platform TCP socket networking (`java.net.Socket`, `ServerSocket`), and built-in concurrency primitives (`ArrayBlockingQueue`, `Executors`, `synchronized` monitors) without requiring external third-party runtime dependencies.
 
 ---
 
-## Decision 001 - Programming Language
-**Date:** 22 August 2026
-**Status:** Closed
+## Decision 002 - Week 1 Hardware Architecture Topic Allocation
+**Date:** 22 August 2026  
+**Status:** Closed  
 
-**Options considered:** Java (preferred/assigned) vs. an alternative language.
-
-**Decision:** Java selected.
-
-**Reason:** Java is the assigned preferred language; team has classroom familiarity with it; strong OOP model fits simulating CPU/registers/memory/processes as classes and objects.
-
-**Effect on project:** All core simulator modules (CPU, memory, process manager, scheduler) will be implemented in Java. Any future proposal to use a different language for a specific module requires a documented reason, advantages/limitations analysis, and faculty approval before implementation - no language change will be made informally.
-
----
-
-## Decision 002 - Research Topic Allocation (Week 1)
-**Date:** 22 August 2026
-**Status:** Open (pending confirmation from Arnold)
-
-**Problem:** The 10 required STC89C52 study topics needed to be split among 4 members.
-
-**Discussion:** Since the team leader wasn't sure how to divide unfamiliar technical work fairly, each of the 10 topics was first scored by difficulty - **Hard** (memory organization, timer, interrupt mechanism), **Medium**, **Easy** - then members were given the freedom to choose from the scored list, with the team leader balancing the final split so no one was overload. Arnold was not present at the meeting, so his topics are provisional. 
-
+**Problem:** The 10 required STC89C52 architectural study topics needed to be distributed across the 4 team members balanced by technical complexity.  
 **Decision:**
-- Shashidhara → Memory organization, Program Counter
-- Chrisel → Timer, Stack mechanism / Stack pointer
-- Cyrus → Interrupt mechanism (+ balancing support)
-- Arnold → CPU/register organization, Status/flag information,
-Instruction categories, GPIO *(pending his confirmation)*
-
-**Responsible:** Cyrus (to confirm with Arnold)
-
-**Next step:** Update this entry to "Closed" once Arnold confirms or the allocation is renegotiated.
+- **Shashidhara Poojari:** Memory organization (`8 KB` code ROM, `256 B` internal RAM) and Program Counter (`PC`).
+- **Chrisel Lobo:** Timer/Counter organization and Hardware Stack mechanism (`SP` initialized at `07H`).
+- **Cyrus Shobith Pinto:** Interrupt organization, multi-process system architecture, and integration coordination.
+- **Arnold Noah Karyappa:** CPU/register organization (`R0`–`R7` across 4 banks), Program Status Word (`PSW`), instruction categories, and GPIO ports (`P0`–`P3`).
 
 ---
 
-## Decision 003 - Build Approach: Reference C Behavior → Java Web Simulator
-**Date:** 27 August 2026
-**Status:** Open
+## Decision 003 - Verification Against STC89C52 / MCS-51 Hardware Specifications
+**Date:** 27 August 2026  
+**Status:** Closed  
 
-**Problem:** The team needs a concrete method for going from "we don't understand the STC89C52" to "we have a working Java-based simulator," without just guessing at behavior or, on the other end, producing something that looks AI-generated with no grounding in the real chip.
-
-**Approach:** Study real STC89C52 embedded C code to understand exact register/peripheral behavior. Then reimplement the equivalent *behavior* - not the C source itself -  as Java classes exposed through a web front end, rather than running on real hardware.
-
-**Reason:** Keeps the simulator's behavior grounded in the real STC89C52 datasheet/reference code while still delivering the actual required artifact: a Java, web-visualized simulator - not a hardware deployment.
-
-**Effect on project:** Each research topic write-up (Decision 002 assignments) should include, where relevant, a short C snippet showing the real register/peripheral behavior being modeled, alongside the planned Java class/method that will simulate it. This becomes the bridge between "architecture study" (Week 1) and "implementation" (Week 2+).
-
-**Responsible:** Whole team - each member documents this mapping for their assigned topic(s).
+**Problem:** Ensure the Java simulator accurately reflects physical STC89C52/8051 register and flag behavior rather than generic arithmetic approximations.  
+**Decision:** Ground every implemented opcode and register transition in the Intel MCS-51 Architectural Manual and STC89C52RC datasheet:
+- Apply `& 0xFF` bitwise masking across all 8-bit registers and memory cells to prevent Java 32-bit signed integer sign-extension.
+- Model `DIV AB` (`0x84`) divide-by-zero behavior according to hardware specification (setting `OV=1, CY=0` without throwing an unhandled runtime exception).
+- Support both synthetic `0xFF` (`HALT`) and the standard 8051 `SJMP $` (`80 FE`) self-loop halt idiom.
 
 ---
 
-## Decision 004 - Finalized Build Approach (27 Aug meeting, 4:20 PM)
-**Date:** 27 August 2026
-**Status:** Closed
+## Decision 004 - Decoupled Three-Process TCP Loopback Architecture
+**Date:** 28 September 2026  
+**Status:** Closed  
 
-**Discussion:** The full team met and discussed the direction proposed in Decision 003, walking through it together until everyone understood it. 
+**Problem:** Monolithic simulators couple GUI rendering and disk file logging directly to the CPU execution loop, allowing UI stalls or slow disk writes to block instruction execution.  
+**Decision:** Separate the simulator into three operating system processes communicating over local TCP loopback sockets (`127.0.0.1`):
+1. `LoggerProcess` (`Port 5001`): Thread-safe append-only file logger writing to `simulator.log`.
+2. `CoreProcess` (`Port 5000`): 8051 CPU engine, memory, stack, FIFO queue, and CRC-24b engine with a bounded non-blocking `ArrayBlockingQueue<String>(1024)` log dispatcher.
+3. `UIProcess` (`Port 8080`): Embedded HTTP server (`GET /api/cmd`) serving the 7-panel Web Dashboard alongside the CLI and Swing desktop clients.
 
-**Decision:** Finalized approach - obtain real STC89C52 source code, run it through a compiler to observe and understand its actual behavior, then build a Java-based UI that models that behavior and connects to it as the simulator front end.
+---
 
-**Reason:** Compiling and observing real source code first (rather than only reading the datasheet) gives the team a concrete, verifiable reference for how each instruction/peripheral actually behaves, before committing that behavior to Java classes.
+## Decision 005 - 3GPP TS 36.212 CRC-24b Multi-Register Implementation
+**Date:** 3 November 2026  
+**Status:** Closed  
 
-**Effect on project:**  Decision 003 with a concrete step: compile and run reference source code as part of each member's research, not just read about it.
-
-**Responsible:** Whole team.
+**Problem:** Execute the allocated 24-bit 3GPP LTE-B cyclic redundancy check ($g_{\text{CRC24B}}(D) = D^{24} + D^{23} + D^6 + D^5 + D + 1$, `0x800063`) within an 8-bit microcontroller register model.  
+**Decision:** Partition the 24-bit shift register across Working Register Bank 0 registers `R5` (bits 23–16), `R6` (bits 15–8), and `R7` (bits 7–0) in `CRC24b.step8051Hardware()`, shifting bit-by-bit through the carry bit across `R7 -> R6 -> R5` and applying $GF(2)$ XOR masks (`0x80`, `0x00`, `0x63`) when the MSB shifted out of `R5` is `1`.

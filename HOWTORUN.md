@@ -1,6 +1,6 @@
 # How to Run the STC89C52 Simulator
 
-**Team 7 (Bondaas)** — Cyrus Pinto (Lead) | Chrisel Lobo (Core) | Arnold Noronha (Logger) | Shashidhara (UI)
+**Team 7 (Bondaas)** — Cyrus Shobith Pinto (Lead - 25190111) | Chrisel Lobo (Core - 25190110) | Arnold Noah Karyappa (Logger - 25190106) | Shashidhara Poojari (UI - 25190148)
 
 ---
 
@@ -128,13 +128,13 @@ Located below the 6 panels:
 
 All unit tests and validation programs run without requiring external dependencies:
 
-### Test Suite 1: 8051 CPU Opcode Unit Tests (14 Tests)
+### Test Suite 1: 8051 CPU Opcode Unit Tests (17 Tests)
 ```powershell
 java -cp bin TestCPU
 ```
 *Expected Output:*
 ```
-Results: 14 PASSED, 0 FAILED out of 14 tests
+Results: 17 PASSED, 0 FAILED out of 17 tests
 ALL TESTS PASSED ✓
 ```
 
@@ -190,9 +190,9 @@ java -cp bin BenchmarkCRC
 
 ---
 
-## 7. Viva & Faculty Edge-Case Verification Guide
+## 7. Hardware & Architectural Edge-Case Verification
 
-When an examiner or professor tests the simulator, here is how each edge-case is handled:
+When testing boundary conditions on the simulator, each hardware edge case is handled as follows:
 
 | Test Scenario | Input / Action | Hardware Silicon Reality | How Simulator Demonstrates It |
 |---|---|---|---|
@@ -230,30 +230,28 @@ STC89C52-Simulator/
 │   ├── CPU.java                              ← 8051 Fetch/Decode/Execute ALU engine
 │   ├── Registers.java                        ← Register file (A, B, R0-R7, PC, SP)
 │   ├── PSW.java                              ← Program Status Word flags (CY, AC, OV, P)
-│   ├── Memory.java                           ← 64KB Code ROM & 256-Byte On-Chip RAM
+│   ├── Memory.java                           ← 8KB Code ROM & 256-Byte On-Chip RAM
 │   ├── DataStructures.java                   ← Circular FIFO Buffer & Stack Manager
 │   ├── CRC24b.java                           ← 3GPP LTE-B CRC Engine (0x800063)
 │   ├── CoreProcess.java                      ← CPU Core TCP Server (Port 5000)
 │   ├── LoggerProcess.java                    ← Audit Logger TCP Server (Port 5001)
-│   ├── LogHandler.java                       ← Synchronized Write-Ahead File Appender
+│   ├── LogHandler.java                       ← Synchronized Append-Only File Appender
 │   ├── LogMessage.java                       ← Log frame data structure
 │   ├── UIProcess.java                        ← HTTP Server (Port 8080) & CLI Bridge
 │   ├── SimulatorUI.java                      ← Swing Desktop GUI Client
 │   └── index.html                            ← Source copy of Web Dashboard
 ├── tests/
-│   ├── TestCPU.java                          ← 14 CPU Opcode verification tests
+│   ├── TestCPU.java                          ← 17 CPU Opcode verification tests
 │   ├── TestCRC24b.java                       ← 8 CRC-24b telecom verification tests
-│   └── LoggerProcessTest.java                ← Multi-level socket audit logger tests
+│   └── LoggerProcessTest.java                ← 6 socket & backpressure logger tests
 ├── programs/
 │   ├── QueueTest.java                        ← Circular FIFO ordering verification
 │   └── BenchmarkCRC.java                     ← Standalone vs Multi-Process benchmark
 ├── docs/
-│   ├── manuals/                              ← Official Student & Technical Manuals
-│   │   ├── Cyrus_Lead_Integration_Manual.pdf
-│   │   ├── Chrisel_Core_CPU_Manual.pdf
-│   │   ├── Arnold_Logger_Audit_Manual.pdf
-│   │   ├── Shashidhara_UI_Subsystem_Manual.pdf
-│   │   └── STC89C52_Simulator_Technical_Manual.pdf
+│   ├── PBL_Report.pdf                        ← Final 9-Page Project Report (PDF)
+│   ├── PBL_Report.docx                       ← Final 9-Page Project Report (DOCX)
+│   ├── decisions/                            ← Architecture decision log
+│   ├── meetings/                             ← Meeting minutes (Meetings 1–5)
 │   └── weekly-status/                        ← Week 1 - Week 4 progress trackers
 └── simulator.log                             ← Generated audit trail log file
 ```

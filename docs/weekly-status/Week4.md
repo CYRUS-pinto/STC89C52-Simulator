@@ -135,7 +135,7 @@ The standard 11-instruction demo program (see CoreProcess, Week 2 demo).
 - [x] 8-Bit Hardware Register Slicing (R5=High, R6=Mid, R7=Low, A=Low)
 - [x] CRC-24b Unit Verification Test Suite (`tests/TestCRC24b.java`, 6/6 PASS)
 - [x] UI Preset 5 Integration (`[ Preset 5: CRC-24b LTE-B ]`)
-- [x] Final Master Technical Report & Defense Dossier (`docs/STC89C52_CRC24b_and_Project_Execution_Report.md`)
+- [x] Final Project Report (`docs/PBL_Report.pdf` and `docs/PBL_Report.docx`)
 - [x] Updated GitHub documentation
 
 ---
